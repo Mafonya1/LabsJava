@@ -6,11 +6,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class FileService{
+public class FileService {
 
-    public static List<Batch> readerCSV(String fileP){
+    public static int counter = 0;
+    public static List<Batch> readerCSV(String fileP) {
         List<Batch> spisok = new ArrayList<>();
-        try(BufferedReader br = new BufferedReader(new FileReader(fileP))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(fileP))) { //Files.newBufferedReader(Path.of(fileP), StandardCharsets.UTF_8)
             String s;//читаем построчно
             while ((s = br.readLine()) != null) {
                 if (s.isEmpty()) {
@@ -48,19 +49,14 @@ public class FileService{
                         spisok.add(new ImportedBatch(article, name, qt, cell, date, country, code));
                     }
 
-                } catch (Exception e) { //если строка битая, то просто ее пропускаем
+                } catch (Exception e) {
+                    counter++;//если строка битая, то просто ее пропускаем
                     System.out.println("Некорректная строка: " + s + " Ошибка: " + e.getMessage());
                 }
             }
-        }catch(IOException e){
+        } catch (IOException e) {
             System.out.println(e.getMessage());
-        }return spisok;
-    }
-
-    public static void main(String[] args){
-        String fileP = "/home/maria/Документы/НГТУ ресурсы/3 семестр/Java/WarehouseLab1/batches.csv ";
-        List<Batch> test = FileService.readerCSV(fileP);
-
-        System.out.println("успешно");
+        }
+        return spisok;
     }
 }

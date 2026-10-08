@@ -1,8 +1,8 @@
 package com.warehouse.warehouselab1;
 
 public class ImportedBatch extends Batch implements Editable {
-    String country;
-    String code;
+    private String country;
+    private String code;
 
     public ImportedBatch(int article, String name, int qt, int cell, String date, String country, String code) {
         super(article, name, qt, cell, date);
@@ -10,16 +10,18 @@ public class ImportedBatch extends Batch implements Editable {
         this.code = code;
     }
 
-    public String getContry(){ return country; }
+    public String getCountry(){ return country; }
     public String getCode(){ return code; }
 
     @Override
-    public void update(int newCell, String newName){
-        this.setCell(newCell);
-        this.setName(newName);
+    public void update(String newCountry, String newCode) {
+        this.country = newCountry;
+        this.code = newCode;
+        System.out.println("Лог: Поля импорта изменены!");
     }
 
 
+    @Override
     public String toString() {
         return super.toString() +
                 " --> " +

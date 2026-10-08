@@ -1,106 +1,145 @@
+//обработка событий
+
 package com.warehouse.warehouselab1;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
-import javafx.scene.control.Button;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
+import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-
-import java.net.URL;
 import java.util.List;
-import java.util.ResourceBundle;
 
-public class MainController implements Initializable {
+import static com.warehouse.warehouselab1.FileService.counter;
 
-    // Элементы интерфейса из вашего graphics.fxml (проверьте соответствие fx:id)
-    @FXML private TableView<Batch> tableView;
-    @FXML private TableColumn<Batch, String> colArticle;
+public class MainController{
+
+    public static final String FILE_NAME = "batches.csv";
+
+    @FXML private TableView<Batch> batchTable;//табличка
+    @FXML private TableColumn<Batch, Integer> colArticle;
     @FXML private TableColumn<Batch, String> colName;
-    @FXML private TableColumn<Batch, Integer> colCount;
-    @FXML private TableColumn<Batch, String> colCell;
+    @FXML private TableColumn<Batch, Integer> colQt;
+    @FXML private TableColumn<Batch, Integer> colCell;
     @FXML private TableColumn<Batch, String> colDate;
+    @FXML private TableColumn<Batch, String> colStatus;
+    @FXML private TableColumn<Batch, String> colCountry;
+    @FXML private TableColumn<Batch, String> colCode;
 
-    @FXML private Button btnAdd;
+    @FXML private TextField countryInput;
+    @FXML private TextField codeInput;
+
     @FXML private Button btnEdit;
-    @FXML private Button btnDelete;
 
-    // Специальный список для динамического обновления таблицы JavaFX
-    private final ObservableList<Batch> masterData = FXCollections.observableArrayList();
+    private final ObservableList<Batch> data = FXCollections.observableArrayList(); //создаем список, в котором будем хранить обьекты типа Batch
 
-    @Override
-    public void initialize(URL location, ResourceBundle resources) {
-        // 1. Настраиваем привязку колонок таблицы к свойствам (полям) класса Batch
-        colArticle.setCellValueFactory(new PropertyValueFactory<>("article"));
+    @FXML
+    public void initialize() {
+        colArticle.setCellValueFactory(new PropertyValueFactory<>("article")); //привязка столбца к определенному свойству данных
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
-        colCount.setCellValueFactory(new PropertyValueFactory<>("count"));
+        colQt.setCellValueFactory(new PropertyValueFactory<>("qt"));
         colCell.setCellValueFactory(new PropertyValueFactory<>("cell"));
-        colDate.setCellValueFactory(new PropertyValueFactory<>("arrivalDate"));
+        colDate.setCellValueFactory(new PropertyValueFactory<>("date"));
+        colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
+        colCountry.setCellValueFactory(new PropertyValueFactory<>("country"));
+        colCode.setCellValueFactory(new PropertyValueFactory<>("code"));
 
-        // Подключаем наш список к таблице
-        tableView.setItems(masterData);
 
-        // 2. Изначально отключаем кнопки изменения и удаления, пока строка не выбрана
+        // Связываем список данных с таблицей
+        batchTable.setItems(data);
+
         btnEdit.setDisable(true);
-        btnDelete.setDisable(true);
-
-        // 3. Загружаем данные из CSV файла
-        loadCsvData();
-
-        // 4. Главная фишка: Слушатель выбора строки в таблице для блокировки кнопок
-        tableView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue == null) {
-                // Если строка не выбрана — блокируем действия
-                btnEdit.setDisable(true);
-                btnDelete.setDisable(true);
-            } else {
-                // ПРОВЕРКА НА EDITABLE (Требование МИНИМУМА)
-                // Если объект реализует интерфейс Editable, разрешаем редактирование
-                if (newValue instanceof Editable) {
+        // Слушаем, какую строку выбрал пользователь
+        batchTable.getSelectionModel().selectedItemProperty().addListener((observable, oldSelection, newSelection) -> {
+            if (newSelection != null) {
+                // Если у выбранной партии статус "Доступен" — делаем кнопку активной
+                if (newSelection.getStatus().equalsIgnoreCase("Доступен")) {
                     btnEdit.setDisable(false);
                 } else {
-                    // Если это ArchivedBatch (read-only), кнопка «Изменить» тухнет (становится серой)
-                    btnEdit.setDisable(true);
+                    btnEdit.setDisable(true); // Для архива кнопка не активна
                 }
-
-                // Кнопку удаления можно оставить активной для любых типов
-                btnDelete.setDisable(false);
+            } else {
+                // Если в таблице вообще ничего не выбрано, кнопка тоже серая
+                btnEdit.setDisable(true);
             }
         });
+
     }
 
-    private void loadCsvData() {
-        // Читаем данные через наш сервис. Файл batches.csv должен лежать в корне проекта.
-        List<Batch> loadedList = FileService.readerCSV("batches.csv");
-        masterData.addAll(loadedList);
+    //КНОПКА «ЗАГРУЗИТЬ ИЗ CSV»
+    @FXML
+    private void handelReadCSV() {
+        List<Batch> parsedList = FileService.readerCSV(FILE_NAME);
+        data.clear();
+        if (!parsedList.isEmpty()) {
+            data.addAll(parsedList);
+            if (counter > 0) {
+                String message = "Было пропущено " + counter + " битых строк. \n";
+                showDialog("Предупреждение: ", message);
+            }
+            showDialog("Успех", "Данные из CSV успешно загружены!");
+        }else {
+            showErrorDialog("Ошибка загрузки", "Не удалось прочитать файл или он пуст.");
+        }
     }
 
-    // Метод для кнопки "Добавить"
+    //КНОПКА «ДОБАВИТЬ»
     @FXML
     private void handleAdd() {
-        System.out.println("Нажата кнопка: Добавить новую импортную партию");
-        // Логика вызова диалогового окна добавления
+        ImportedBatch newBatch = new ImportedBatch(777, "Новый Импорт", 10, 202, "08.10.2026", "Китай", "CN-99");
+
+        data.add(newBatch);
+        showDialog("Добавление", "Добавлена новая редактируемая импортная партия!");
     }
 
-    // Метод для кнопки "Изменить"
+    //КНОПКА «ИЗМЕНИТЬ»
     @FXML
     private void handleEdit() {
-        Batch selected = tableView.getSelectionModel().getSelectedItem();
-        if (selected != null && selected instanceof Editable) {
-            System.out.println("Редактируем партию: " + selected.getName());
-            // Логика вызова окна редактирования полей
+        // Получаем выделенный Batch из таблицы
+        Batch selected = batchTable.getSelectionModel().getSelectedItem();
+
+        if (selected == null) {
+            showErrorDialog("Ошибка изменения", "Пожалуйста, сначала выделите строку в таблице!");
+            return;
+        }
+        if (selected instanceof Editable) {
+
+            String newCountry = countryInput.getText().trim();
+            String newCode = codeInput.getText().trim(); //использует метод для дальнейшей удобной проверки на пустоту в строке
+
+            Editable editable = (Editable) selected;
+
+            editable.update(
+                    newCountry.isEmpty() ? "Не указана" : newCountry,
+                    newCode.isEmpty() ? "0000" : newCode
+            );
+
+            batchTable.refresh();
+            countryInput.clear();
+            codeInput.clear();
+
+            showDialog("Редактирование", "Специфичные поля импортной партии (Страна и Код) успешно изменены!");
+
+        }else {
+            // Read-Only
+            showErrorDialog("Доступ запрещен", "Выбранная архивная партия защищена от изменений!");
         }
     }
 
-    // Метод для кнопки "Удалить"
-    @FXML
-    private void handleDelete() {
-        Batch selected = tableView.getSelectionModel().getSelectedItem();
-        if (selected != null) {
-            masterData.remove(selected);
-            System.out.println("Партия удалена из таблицы");
-        }
+    // Вспомогательный метод для вывода простых информационных окон
+    private void showDialog(String title, String content) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(content);
+        alert.showAndWait();
+    }
+
+    // Вспомогательный метод для вывода ошибок
+    private void showErrorDialog(String title, String content) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText("Внимание!");
+        alert.setContentText(content);
+        alert.showAndWait();
     }
 }

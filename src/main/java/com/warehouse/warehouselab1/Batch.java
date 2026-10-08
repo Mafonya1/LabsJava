@@ -1,11 +1,11 @@
 package com.warehouse.warehouselab1;
 
-public class Batch{
-    private  int article;
-    private  String name;
-    private int qt;
-    private int cell;
-    private String date;
+public abstract class Batch{
+    private final  int article;
+    private final String name;
+    private final int qt;
+    private final int cell;
+    private final String date;
 
     public  Batch(int article, String name, int qt, int cell, String date){
         this.article = article;
@@ -21,8 +21,13 @@ public class Batch{
     public int getCell(){ return cell; }
     public String getDate(){ return date; }
 
-    public void setName(String newName){ this.name = newName; }
-    public void setCell(int newCell){ this.cell = newCell; }
+    public String getStatus() {
+        if (this instanceof Editable) {
+            return "Доступен";
+        } else {
+            return "В архиве";
+        }
+    }
 
     @Override
     public  String toString(){
@@ -35,4 +40,14 @@ public class Batch{
                 '}';
 
     }
+
+    public String getCountry() {
+        return "—";
+    }
+
+    public String getCode() {
+        return "—";
+    }
+
+
 }
