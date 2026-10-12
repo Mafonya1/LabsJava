@@ -11,7 +11,6 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import java.io.IOException;
 import java.util.List;
 
-import static com.warehouse.warehouselab1.FileService.counter;
 
 public class MainController{
 

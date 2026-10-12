@@ -6,9 +6,8 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class FileService {
-
-    public static int counter = 0;
+public class FileService{
+    private static final String ARCHIVE_MARK = "Archive";
 
     public static void saveCSV(String fileP, ObservableList<Batch> batches) throws IOException{
         try(BufferedWriter writen = new BufferedWriter(new FileWriter(fileP)))
@@ -24,37 +23,53 @@ public class FileService {
     private static String toCsvLine(Batch b) {
         String common = b.getArticle() + ";" + b.getName() + ";" + b.getQt() + ";"
                 + b.getCell() + ";" + b.getDate();
-        if (b instanceof ImportedBatch) {
-            ImportedBatch imported = (ImportedBatch) b;
+
+        if (b instanceof ImportedBatch imported) {
+            // артикул;название;кол-во;ячейка;дата;страна;код
             return common + ";" + imported.getCountry() + ";" + imported.getCode();
         }
-        return "Archive;" + common;
+        // Archive;артикул;название;кол-во;ячейка;дата
+        return ARCHIVE_MARK + ";" + common;
     }
 
-    public static List<Batch> readerCSV(String fileP) throws IOException {
-        List<Batch> result = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(new FileReader(fileP))) {
-            // .lines() превращает reader в поток строк, который можно перебрать
-            for (String line : (Iterable<String>) reader.lines()::iterator) {
+    public static ReadRes.LoadResult readerCSV(String fileP) throws IOException {
+        List<Batch> batches = new ArrayList<>();
+        int skipped = 0;
+
+        try(BufferedReader reader = new BufferedReader(new FileReader(fileP))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
                 if (line.isBlank()) continue;
                 try {
-                    result.add(parseLine(line));
+                    batches.add(parseLine(line));
                 } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
-                    counter++;
+                    skipped++;                      // битая строка: пропускаем и считаем
                 }
             }
+            return new ReadRes.LoadResult(batches, skipped);
         }
-        return result;
     }
 
     private static Batch parseLine(String line) {
-        String[] p = line.split(";");
-        if (p[0].trim().equalsIgnoreCase("Archive")) {
-            return new ArchivedBatch(Integer.parseInt(p[1].trim()), p[2].trim(),
-                    Integer.parseInt(p[3].trim()), Integer.parseInt(p[4].trim()), p[5].trim());
+        String[] data = line.split(";");
+
+        if (ARCHIVE_MARK.equalsIgnoreCase(data[0].trim())) {
+            // Архивная партия: Archive;артикул;название;кол-во;ячейка;дата
+            return new ArchivedBatch(
+                    Integer.parseInt(data[1].trim()),
+                    data[2].trim(),
+                    Integer.parseInt(data[3].trim()),
+                    Integer.parseInt(data[4].trim()),
+                    data[5].trim());
         }
-        return new ImportedBatch(Integer.parseInt(p[0].trim()), p[1].trim(),
-                Integer.parseInt(p[2].trim()), Integer.parseInt(p[3].trim()), p[4].trim(),
-                p[5].trim(), p[6].trim());
+        // Импортная партия: артикул;название;кол-во;ячейка;дата;страна;код
+        return new ImportedBatch(
+                Integer.parseInt(data[0].trim()),
+                data[1].trim(),
+                Integer.parseInt(data[2].trim()),
+                Integer.parseInt(data[3].trim()),
+                data[4].trim(),
+                data[5].trim(),
+                data[6].trim());
     }
 }
