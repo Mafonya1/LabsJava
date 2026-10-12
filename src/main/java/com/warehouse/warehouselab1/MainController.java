@@ -7,6 +7,8 @@ import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+
+import java.io.IOException;
 import java.util.List;
 
 import static com.warehouse.warehouselab1.FileService.counter;
@@ -68,19 +70,33 @@ public class MainController{
     //КНОПКА «ЗАГРУЗИТЬ ИЗ CSV»
     @FXML
     private void handelReadCSV() {
-        List<Batch> parsedList = FileService.readerCSV(FILE_NAME);
-        data.clear();
-        if (!parsedList.isEmpty()) {
-            data.addAll(parsedList);
-            if (counter > 0) {
-                String message = "Было пропущено " + counter + " битых строк. \n";
-                showDialog("Предупреждение: ", message);
+        try {
+            List<Batch> parsedList = FileService.readerCSV(FILE_NAME);
+            data.clear();
+            if (!parsedList.isEmpty()) {
+                data.addAll(parsedList);
+                if (counter > 0) {
+                    String message = "Было пропущено " + counter + " битых строк. \n";
+                    showDialog("Предупреждение: ", message);
+                }
+                showDialog("Успех", "Данные из CSV успешно загружены!");
             }
-            showDialog("Успех", "Данные из CSV успешно загружены!");
-        }else {
-            showErrorDialog("Ошибка загрузки", "Не удалось прочитать файл или он пуст.");
+        } catch (IOException e) {
+            showErrorDialog("Ошибка чтения файла", "Не удалось прочитать " + FILE_NAME + ": " + e.getMessage());
         }
     }
+
+
+    @FXML
+    private void handelSaveCSV(){
+            try{
+                FileService.saveCSV(FILE_NAME, data);
+                showDialog("Успех", "Сохранено записей: " + data.size());
+            } catch (IOException e) {
+                showErrorDialog("Ошибка сохранения", e.getMessage());
+            }
+        }
+
 
     //КНОПКА «ДОБАВИТЬ»
     @FXML

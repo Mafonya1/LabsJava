@@ -1,62 +1,60 @@
 package com.warehouse.warehouselab1;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import javafx.collections.ObservableList;
+
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class FileService {
 
     public static int counter = 0;
-    public static List<Batch> readerCSV(String fileP) {
-        List<Batch> spisok = new ArrayList<>();
-        try (BufferedReader br = new BufferedReader(new FileReader(fileP))) { //Files.newBufferedReader(Path.of(fileP), StandardCharsets.UTF_8)
-            String s;//читаем построчно
-            while ((s = br.readLine()) != null) {
-                if (s.isEmpty()) {
-                    continue;
-                }
+
+    public static void saveCSV(String fileP, ObservableList<Batch> batches) throws IOException{
+        try(BufferedWriter writen = new BufferedWriter(new FileWriter(fileP)))
+        {
+                for (Batch b : batches)
+            {
+                writen.write(toCsvLine(b));
+                writen.newLine();
+            }
+        }
+    }
+
+    private static String toCsvLine(Batch b) {
+        String common = b.getArticle() + ";" + b.getName() + ";" + b.getQt() + ";"
+                + b.getCell() + ";" + b.getDate();
+        if (b instanceof ImportedBatch) {
+            ImportedBatch imported = (ImportedBatch) b;
+            return common + ";" + imported.getCountry() + ";" + imported.getCode();
+        }
+        return "Archive;" + common;
+    }
+
+    public static List<Batch> readerCSV(String fileP) throws IOException {
+        List<Batch> result = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(new FileReader(fileP))) {
+            // .lines() превращает reader в поток строк, который можно перебрать
+            for (String line : (Iterable<String>) reader.lines()::iterator) {
+                if (line.isBlank()) continue;
                 try {
-                    // Разделяем по точке с запятой, как у вас в файле batches.csv
-                    String[] data = s.split(";");
-
-                    // Считываем тип строки (например, Archive или 102)
-                    String typeOrArticle = data[0].trim();
-
-                    if ("Archive".equalsIgnoreCase(typeOrArticle)) {
-                        // Парсим архивную партию (в ней 6 элементов)
-                        int article = Integer.parseInt(data[1].trim());
-                        String police = data[2].trim();
-                        int qt = Integer.parseInt(data[3].trim());
-                        int cell = Integer.parseInt(data[4].trim());
-                        String date = data[5].trim();
-
-                        // Добавляем именно в list
-                        spisok.add(new ArchivedBatch(article, police, qt, cell, date));
-
-                    } else {
-                        // Парсим импортную партию (если первая ячейка — это сразу число-артикул)
-                        int article = Integer.parseInt(typeOrArticle);
-                        String name = data[1].trim();
-                        int qt = Integer.parseInt(data[2].trim());
-                        int cell = Integer.parseInt(data[3].trim());
-                        String date = data[4].trim();
-                        String country = data[5].trim();
-                        String code = data[6].trim();
-
-                        // Добавляем именно в list
-                        spisok.add(new ImportedBatch(article, name, qt, cell, date, country, code));
-                    }
-
-                } catch (Exception e) {
-                    counter++;//если строка битая, то просто ее пропускаем
-                    System.out.println("Некорректная строка: " + s + " Ошибка: " + e.getMessage());
+                    result.add(parseLine(line));
+                } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+                    counter++;
                 }
             }
-        } catch (IOException e) {
-            System.out.println(e.getMessage());
         }
-        return spisok;
+        return result;
+    }
+
+    private static Batch parseLine(String line) {
+        String[] p = line.split(";");
+        if (p[0].trim().equalsIgnoreCase("Archive")) {
+            return new ArchivedBatch(Integer.parseInt(p[1].trim()), p[2].trim(),
+                    Integer.parseInt(p[3].trim()), Integer.parseInt(p[4].trim()), p[5].trim());
+        }
+        return new ImportedBatch(Integer.parseInt(p[0].trim()), p[1].trim(),
+                Integer.parseInt(p[2].trim()), Integer.parseInt(p[3].trim()), p[4].trim(),
+                p[5].trim(), p[6].trim());
     }
 }

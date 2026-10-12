@@ -17,12 +17,13 @@
             <TableColumn fx:id="colCode" prefWidth="106.0" text="Код" />
         </columns>
       </TableView>
-      <Button layoutX="144.0" layoutY="305.0" mnemonicParsing="false" onAction="#handleAdd" prefHeight="38.0" prefWidth="69.0" text="Добавить" />
+      <Button layoutX="108.0" layoutY="304.0" mnemonicParsing="false" onAction="#handleAdd" prefHeight="38.0" prefWidth="69.0" text="Добавить" />
       <Button layoutX="347.0" layoutY="305.0" mnemonicParsing="false" onAction="#handleEdit" prefHeight="38.0" prefWidth="70.0" text="Изменить" />
        <Button layoutX="539.0" layoutY="305.0" mnemonicParsing="false" onAction="#handelReadCSV" prefHeight="37.0" prefWidth="110.0" text="Загрузить из CSV" />
       <TextField fx:id="countryInput" layoutX="178.0" layoutY="381.0" onAction="#handleEdit" />
       <TextField fx:id="codeInput" layoutX="424.0" layoutY="379.0" onAction="#handleEdit" />
       <Label layoutX="424.0" layoutY="357.0" prefHeight="18.0" prefWidth="150.0" text="Введите код:" />
       <Label layoutX="178.0" layoutY="357.0" prefHeight="18.0" prefWidth="187.0" text="Введите страну:" />
+      <Button layoutX="17.0" layoutY="407.0" mnemonicParsing="false" onAction="#handelSaveCSV" text="Сохранить в CVS" />
    </children>
 </AnchorPane>
