@@ -7,9 +7,11 @@ import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.GridPane;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 
 public class MainController{
@@ -25,9 +27,6 @@ public class MainController{
     @FXML private TableColumn<Batch, String> colStatus;
     @FXML private TableColumn<Batch, String> colCountry;
     @FXML private TableColumn<Batch, String> colCode;
-
-    @FXML private TextField countryInput;
-    @FXML private TextField codeInput;
 
     @FXML private Button btnEdit;
 
@@ -49,94 +48,158 @@ public class MainController{
         batchTable.setItems(data);
 
         btnEdit.setDisable(true);
-        // Слушаем, какую строку выбрал пользователь
-        batchTable.getSelectionModel().selectedItemProperty().addListener((observable, oldSelection, newSelection) -> {
-            if (newSelection != null) {
-                // Если у выбранной партии статус "Доступен" — делаем кнопку активной
-                if (newSelection.getStatus().equalsIgnoreCase("Доступен")) {
-                    btnEdit.setDisable(false);
-                } else {
-                    btnEdit.setDisable(true); // Для архива кнопка не активна
-                }
-            } else {
-                // Если в таблице вообще ничего не выбрано, кнопка тоже серая
-                btnEdit.setDisable(true);
-            }
-        });
-
     }
+
+// Включает кнопку «Изменить» только для редактируемых партий
+        @FXML
+        private void updateEditButton() {
+            Batch selected = batchTable.getSelectionModel().getSelectedItem();
+
+            if (selected instanceof Editable) {
+                btnEdit.setDisable(false);
+            } else {
+                btnEdit.setDisable(true); // ничего не выбрано или выбрана архивная партия
+            }
+        }
 
     //КНОПКА «ЗАГРУЗИТЬ ИЗ CSV»
     @FXML
     private void handelReadCSV() {
         try {
-            List<Batch> parsedList = FileService.readerCSV(FILE_NAME);
-            data.clear();
-            if (!parsedList.isEmpty()) {
-                data.addAll(parsedList);
-                if (counter > 0) {
-                    String message = "Было пропущено " + counter + " битых строк. \n";
-                    showDialog("Предупреждение: ", message);
-                }
-                showDialog("Успех", "Данные из CSV успешно загружены!");
+            ReadRes.LoadResult result = FileService.readerCSV(FILE_NAME);
+            data.setAll(result.batches()); //полностью заменяет все старые элементы в ObservableList на новые за одну единственную транзакцию
+            updateEditButton();
+
+            String message = "Загружено записей: " + data.size();
+            if (result.skipped() > 0) {
+                showDialog("Предупреждение", message + "\nПропущено битых строк: " + result.skipped());
+            } else if (result.batches().isEmpty()) {
+                showDialog("Файл пуст", "В файле " + FILE_NAME + " нет записей.");
+            } else {
+                showDialog("Успех", message);
             }
         } catch (IOException e) {
-            showErrorDialog("Ошибка чтения файла", "Не удалось прочитать " + FILE_NAME + ": " + e.getMessage());
+            showErrorDialog("Ошибка чтения файла",
+                    "Не удалось прочитать " + FILE_NAME + ": " + e.getMessage());
         }
     }
 
-
     @FXML
     private void handelSaveCSV(){
-            try{
-                FileService.saveCSV(FILE_NAME, data);
-                showDialog("Успех", "Сохранено записей: " + data.size());
-            } catch (IOException e) {
-                showErrorDialog("Ошибка сохранения", e.getMessage());
-            }
+        try {
+           FileService.saveCSV(FILE_NAME, data);
+           String message = "Сохранено записей: " + data.size();
+           showDialog("Успех", message);
+        } catch (IOException e) {
+            showErrorDialog("Ошибка сохранения файла",
+                    "Не удалось прочитать " + FILE_NAME + ": " + e.getMessage());
         }
+    }
 
-
+    //КНОПКА «ДОБАВИТЬ»
     //КНОПКА «ДОБАВИТЬ»
     @FXML
     private void handleAdd() {
-        ImportedBatch newBatch = new ImportedBatch(777, "Новый Импорт", 10, 202, "08.10.2026", "Китай", "CN-99");
+        TextField fArticle = new TextField();
+        TextField fName = new TextField();
+        TextField fQt = new TextField();
+        TextField fCell = new TextField();
+        TextField fDate = new TextField();
+        fDate.setPromptText("дд.мм.гггг");
+        TextField fCountry = new TextField();
+        TextField fCode = new TextField();
 
-        data.add(newBatch);
-        showDialog("Добавление", "Добавлена новая редактируемая импортная партия!");
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.add(new Label("Артикул:"), 0, 0);   grid.add(fArticle, 1, 0);
+        grid.add(new Label("Название:"), 0, 1);  grid.add(fName, 1, 1);
+        grid.add(new Label("Количество:"), 0, 2); grid.add(fQt, 1, 2);
+        grid.add(new Label("Ячейка:"), 0, 3);    grid.add(fCell, 1, 3);
+        grid.add(new Label("Дата завоза:"), 0, 4); grid.add(fDate, 1, 4);
+        grid.add(new Label("Страна:"), 0, 5);    grid.add(fCountry, 1, 5);
+        grid.add(new Label("Таможенный код:"), 0, 6); grid.add(fCode, 1, 6);
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Новая партия");
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isEmpty() || result.get() != ButtonType.OK) {
+            return; // пользователь нажал «Отмена» или закрыл окно
+        }
+
+        // Проверка введённых данных
+        try {
+            int article = Integer.parseInt(fArticle.getText().trim());
+            int qt = Integer.parseInt(fQt.getText().trim());
+            int cell = Integer.parseInt(fCell.getText().trim());
+            String name = fName.getText().trim();
+            String date = fDate.getText().trim();
+            String country = fCountry.getText().trim();
+            String code = fCode.getText().trim();
+
+            if (name.isEmpty() || country.isEmpty() || code.isEmpty()) {
+                showErrorDialog("Ошибка ввода", "Название, страна и код не должны быть пустыми.");
+                return;
+            }
+            if (name.contains(";") || country.contains(";") || code.contains(";")) {
+                showErrorDialog("Ошибка ввода", "Символ ';' использовать нельзя (он разделитель в CSV).");
+                return;
+            }
+            if (qt < 0 || article < 0 || cell < 0) {
+                showErrorDialog("Ошибка ввода", "Числа не могут быть отрицательными.");
+                return;
+            }
+            if (!date.matches("\\d{2}\\.\\d{2}\\.\\d{4}")) {
+                showErrorDialog("Ошибка ввода", "Дата должна быть в формате дд.мм.гггг.");
+                return;
+            }
+            for (Batch b : data) {
+                if (b.getArticle() == article) {
+                    showErrorDialog("Ошибка ввода", "Партия с артикулом " + article + " уже есть.");
+                    return;
+                }
+            }
+
+            data.add(new ImportedBatch(article, name, qt, cell, date, country, code));
+        } catch (NumberFormatException e) {
+            showErrorDialog("Ошибка ввода", "Артикул, количество и ячейка должны быть целыми числами.");
+        }
     }
 
     //КНОПКА «ИЗМЕНИТЬ»
     @FXML
     private void handleEdit() {
-        // Получаем выделенный Batch из таблицы
         Batch selected = batchTable.getSelectionModel().getSelectedItem();
 
-        if (selected == null) {
-            showErrorDialog("Ошибка изменения", "Пожалуйста, сначала выделите строку в таблице!");
+        // защита на случай, если кнопка всё же нажата для архивной партии
+        if (!(selected instanceof Editable)) {
+            showErrorDialog("Ошибка", "Эту партию нельзя редактировать.");
             return;
         }
-        if (selected instanceof Editable) {
+        ImportedBatch batch = (ImportedBatch) selected;
 
-            String newCountry = countryInput.getText().trim();
-            String newCode = codeInput.getText().trim(); //использует метод для дальнейшей удобной проверки на пустоту в строке
+        // поля заранее заполнены текущими значениями
+        TextField fCountry = new TextField(batch.getCountry());
+        TextField fCode = new TextField(batch.getCode());
 
-            Editable editable = (Editable) selected;
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.add(new Label("Страна:"), 0, 0);          grid.add(fCountry, 1, 0);
+        grid.add(new Label("Таможенный код:"), 0, 1);  grid.add(fCode, 1, 1);
 
-            editable.update(
-                    newCountry.isEmpty() ? "Не указана" : newCountry,
-                    newCode.isEmpty() ? "0000" : newCode
-            );
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Редактирование партии " + batch.getArticle());
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            batch.update(fCountry.getText().trim(), fCode.getText().trim());
             batchTable.refresh();
-            countryInput.clear();
-            codeInput.clear();
-
-            showDialog("Редактирование", "Специфичные поля импортной партии (Страна и Код) успешно изменены!");
-
-        }else {
-            // Read-Only
-            showErrorDialog("Доступ запрещен", "Выбранная архивная партия защищена от изменений!");
         }
     }
 

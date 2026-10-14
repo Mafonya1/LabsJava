@@ -5,7 +5,7 @@
 
 <AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="459.0" prefWidth="765.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.warehouse.warehouselab1.MainController">
    <children>
-      <TableView fx:id="batchTable" layoutX="17.0" layoutY="38.0" prefHeight="245.0" prefWidth="730.0">
+       <TableView fx:id="batchTable" layoutX="17.0" layoutY="38.0" onKeyReleased="#updateEditButton" onMouseClicked="#updateEditButton" prefHeight="245.0" prefWidth="730.0">
         <columns>
           <TableColumn fx:id="colArticle" prefWidth="66.0" text="Артикул" />
           <TableColumn fx:id="colName" prefWidth="94.0" text="Название" />
@@ -17,13 +17,9 @@
             <TableColumn fx:id="colCode" prefWidth="106.0" text="Код" />
         </columns>
       </TableView>
-      <Button layoutX="108.0" layoutY="304.0" mnemonicParsing="false" onAction="#handleAdd" prefHeight="38.0" prefWidth="69.0" text="Добавить" />
-      <Button layoutX="347.0" layoutY="305.0" mnemonicParsing="false" onAction="#handleEdit" prefHeight="38.0" prefWidth="70.0" text="Изменить" />
-       <Button layoutX="539.0" layoutY="305.0" mnemonicParsing="false" onAction="#handelReadCSV" prefHeight="37.0" prefWidth="110.0" text="Загрузить из CSV" />
-      <TextField fx:id="countryInput" layoutX="178.0" layoutY="381.0" onAction="#handleEdit" />
-      <TextField fx:id="codeInput" layoutX="424.0" layoutY="379.0" onAction="#handleEdit" />
-      <Label layoutX="424.0" layoutY="357.0" prefHeight="18.0" prefWidth="150.0" text="Введите код:" />
-      <Label layoutX="178.0" layoutY="357.0" prefHeight="18.0" prefWidth="187.0" text="Введите страну:" />
-      <Button layoutX="17.0" layoutY="407.0" mnemonicParsing="false" onAction="#handelSaveCSV" text="Сохранить в CVS" />
+      <Button fx:id="btnAddCSV" layoutX="108.0" layoutY="304.0" mnemonicParsing="false" onAction="#handleAdd" prefHeight="38.0" prefWidth="69.0" text="Добавить" />
+      <Button fx:id="btnEdit" layoutX="347.0" layoutY="305.0" mnemonicParsing="false" onAction="#handleEdit" prefHeight="38.0" prefWidth="70.0" text="Изменить" />
+       <Button fx:id="btnReadCSV" layoutX="539.0" layoutY="305.0" mnemonicParsing="false" onAction="#handelReadCSV" prefHeight="37.0" prefWidth="110.0" text="Загрузить из CSV" />
+      <Button fx:id="btnSaveCSV" layoutX="539.0" layoutY="371.0" mnemonicParsing="false" onAction="#handelSaveCSV" prefHeight="38.0" prefWidth="110.0" text="Сохранить в CVS" />
    </children>
 </AnchorPane>
