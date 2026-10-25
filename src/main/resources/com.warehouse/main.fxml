@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.warehouse.ui.MainController"
+            prefWidth="750" prefHeight="450">
+    <top>
+        <HBox spacing="8" style="-fx-padding: 10;">
+            <Button fx:id="btnAdd" text="Добавить" onAction="#handleAdd"/>
+            <Button fx:id="btnEdit" text="Изменить" onAction="#handleEdit"/>
+            <Button fx:id="btnDelete" text="Удалить" onAction="#handleDelete"/>
+            <Button fx:id="btnLoad" text="Загрузить из CSV" onAction="#handleLoad"/>
+            <Button fx:id="btnSave" text="Сохранить в CSV" onAction="#handleSave"/>
+        </HBox>
+    </top>
+    <center>
+        <TableView fx:id="tableView">
+            <columns>
+                <TableColumn fx:id="colArticle" text="Артикул" prefWidth="80"/>
+                <TableColumn fx:id="colName" text="Название" prefWidth="180"/>
+                <TableColumn fx:id="colQuantity" text="Количество" prefWidth="100"/>
+                <TableColumn fx:id="colCell" text="Ячейка" prefWidth="80"/>
+                <TableColumn fx:id="colDate" text="Дата завоза" prefWidth="110"/>
+                <TableColumn fx:id="colType" text="Тип" prefWidth="100"/>
+            </columns>
+        </TableView>
+    </center>
+</BorderPane>

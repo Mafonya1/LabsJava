@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<GridPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+          fx:controller="com.warehouse.ui.BatchDialogController"
+          hgap="10" vgap="8" style="-fx-padding: 15;">
+    <Label text="Артикул:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+    <TextField fx:id="tfArticle" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+    <Label text="Название:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+    <TextField fx:id="tfName" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+    <Label text="Количество:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+    <TextField fx:id="tfQuantity" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+    <Label text="Ячейка:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+    <TextField fx:id="tfCell" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+    <Label text="Дата завоза:" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+    <TextField fx:id="tfDate" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+    <Label text="Страна:" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+    <TextField fx:id="tfCountry" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+    <Label text="Таможенный код:" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
+    <TextField fx:id="tfCustomsCode" GridPane.rowIndex="6" GridPane.columnIndex="1"/>
+    <Button text="OK" onAction="#handleOk" GridPane.rowIndex="7" GridPane.columnIndex="0"/>
+    <Button text="Отмена" onAction="#handleCancel" GridPane.rowIndex="7" GridPane.columnIndex="1"/>
+</GridPane>
