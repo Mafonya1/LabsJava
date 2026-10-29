@@ -4,15 +4,31 @@
 
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.warehouse.ui.MainController"
-            prefWidth="750" prefHeight="450">
+            prefWidth="1200" prefHeight="620">
     <top>
-        <HBox spacing="8" style="-fx-padding: 10;">
-            <Button fx:id="btnAdd" text="Добавить" onAction="#handleAdd"/>
-            <Button fx:id="btnEdit" text="Изменить" onAction="#handleEdit"/>
-            <Button fx:id="btnDelete" text="Удалить" onAction="#handleDelete"/>
-            <Button fx:id="btnLoad" text="Загрузить из CSV" onAction="#handleLoad"/>
-            <Button fx:id="btnSave" text="Сохранить в CSV" onAction="#handleSave"/>
-        </HBox>
+        <VBox spacing="6" style="-fx-padding: 10;">
+            <HBox spacing="8">
+                <Button fx:id="btnAdd" text="Добавить" onAction="#handleAdd"/>
+                <Button fx:id="btnEdit" text="Изменить" onAction="#handleEdit"/>
+                <Button fx:id="btnDelete" text="Удалить" onAction="#handleDelete"/>
+                <Button fx:id="btnLoad" text="Загрузить из CSV" onAction="#handleLoad"/>
+                <Button fx:id="btnSave" text="Сохранить в CSV" onAction="#handleSave"/>
+                <Separator orientation="VERTICAL"/>
+                <Button fx:id="btnImport" text="Импорт (JSON/BIN)" onAction="#handleImport"/>
+                <Button fx:id="btnExport" text="Экспорт (JSON/BIN)" onAction="#handleExport"/>
+            </HBox>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label text="Поиск по артикулу:"/>
+                <TextField fx:id="tfSearch" prefWidth="100" onAction="#handleFind"/>
+                <Button fx:id="btnFind" text="Найти" onAction="#handleFind"/>
+                <Separator orientation="VERTICAL"/>
+                <Label text="Сгенерировать записей:"/>
+                <TextField fx:id="tfCount" text="1000" prefWidth="80" onAction="#handleGenerate"/>
+                <Button fx:id="btnGenerate" text="Сгенерировать" onAction="#handleGenerate"/>
+                <ProgressBar fx:id="progressBar" prefWidth="140" progress="0.0"/>
+                <Label fx:id="lblStatus" text=""/>
+            </HBox>
+        </VBox>
     </top>
     <center>
         <TableView fx:id="tableView">
@@ -26,4 +42,7 @@
             </columns>
         </TableView>
     </center>
+    <right>
+        <ScrollPane fx:id="visualPane" prefWidth="560" fitToWidth="false"/>
+    </right>
 </BorderPane>
