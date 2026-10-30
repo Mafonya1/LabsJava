@@ -1,16 +1,18 @@
 package com.warehouse.ui.task;
 
 import com.warehouse.model.Batch;
-import com.warehouse.service.BatchGenerator;
+import com.warehouse.model.ImportedBatch;
 import javafx.concurrent.Task;
 
-/**
- * Фоновая генерация N партий. Как и LoadCsvTask, только создаёт объекты;
- * в хеш-таблицу их добавит контроллер в потоке JavaFX.
- */
-public class GenerateTask extends Task<Batch[]> {
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
-    private static final int PROGRESS_STEP = 500;
+/** Генерация нужного числа партий в фоновом потоке. Создаёт только импортные партии. */
+public class GenerateTask extends Task<List<Batch>> {
+
+    private static final String[] NAMES = {"Болт", "Гайка", "Шайба", "Кабель", "Подшипник", "Фильтр"};
+    private static final String[] COUNTRIES = {"Китай", "Германия", "Турция", "Индия", "Япония"};
 
     private final int count;
 
@@ -19,16 +21,25 @@ public class GenerateTask extends Task<Batch[]> {
     }
 
     @Override
-    protected Batch[] call() {
-        BatchGenerator generator = new BatchGenerator();
-        Batch[] result = new Batch[count];
+    protected List<Batch> call() {
+        Random random = new Random();
+        List<Batch> result = new ArrayList<>();
+
         for (int i = 0; i < count; i++) {
-            result[i] = generator.create(i);
-            if (i % PROGRESS_STEP == 0) {
-                updateProgress(i, count);
+            if (isCancelled()) {
+                return null;                 // пользователь нажал "Отмена"
             }
+            int article = 100000 + random.nextInt(100000000);
+            String name = NAMES[random.nextInt(NAMES.length)] + "-" + (article % 1000);
+            int quantity = random.nextInt(1000);
+            int cell = 1 + random.nextInt(500);
+            String date = String.format("%02d.%02d.2026", 1 + random.nextInt(28), 1 + random.nextInt(12));
+            String country = COUNTRIES[random.nextInt(COUNTRIES.length)];
+            String customsCode = String.format("%04d.%02d", 1000 + random.nextInt(9000), random.nextInt(100));
+
+            result.add(new ImportedBatch(article, name, quantity, cell, date, country, customsCode));
+            updateProgress(i + 1, count);
         }
-        updateProgress(count, count);
         return result;
     }
 }

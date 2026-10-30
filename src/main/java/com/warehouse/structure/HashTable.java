@@ -1,16 +1,14 @@
 package com.warehouse.structure;
 
-import java.util.function.BiConsumer;
-
 /**
- * Хеш-таблица: открытая адресация + линейное пробирование (вариант 5).
+ * Хеш-таблица: открытая адресация + линейное пробирование.
  *
- * Данные лежат в трёх массивах. Ячейка с номером i - это keys[i], values[i], states[i].
- * Состояние ячейки: FREE (пустая), OCCUPIED (занята) или DELETED (там был элемент, его удалили).
+ * Данные лежат в трёх массивах одной длины. Ячейка номер i - это
+ * keys[i], values[i] и states[i].
+ * Состояние ячейки: FREE (пустая), OCCUPIED (занята), DELETED (элемент удалили).
  *
- * Идея: ключ "хочет" лежать в ячейке hash % capacity. Если она занята другим ключом,
- * смотрим следующую (+1, по кругу), и так пока не найдём ключ или пустую ячейку.
- * Каждая осмотренная ячейка = одна проба.
+ * Ключ "хочет" лежать в ячейке с номером (hash % capacity). Если она занята другим ключом,
+ * смотрим следующую (+1, по кругу) и так далее. Каждая осмотренная ячейка - это одна проба.
  * DELETED нужен, чтобы после удаления цепочка проб не обрывалась.
  */
 public class HashTable<K, V> {
@@ -18,106 +16,47 @@ public class HashTable<K, V> {
     public enum SlotState { FREE, OCCUPIED, DELETED }
 
     private static final int START_CAPACITY = 16;
-    private static final double MAX_LOAD = 0.75;   // выше этого заполнения - рехеш
+    private static final double MAX_LOAD = 0.75;   // если заполнено больше - делаем рехеш
 
     private Object[] keys;
     private Object[] values;
     private SlotState[] states;
     private int capacity;
-    private int size;
-    private int deleted;
+    private int size;      // сколько ячеек занято
+    private int deleted;   // сколько ячеек DELETED
 
-    // история последней операции ?
+    // статистика последней операции (для визуализации)
     private int[] lastPath = new int[0];   // номера осмотренных ячеек по порядку
-    private int lastPathLength;
-    private int lastResultIndex = -1;
-    private boolean lastRehashed;
+    private int lastPathLength;            // сколько ячеек осмотрели (= число проб)
+    private int lastResultIndex = -1;      // итоговая ячейка (-1 - ничего не нашли)
+    private boolean lastRehashed;          // был ли рехеш в этой операции
 
-    // история за всё время
-    private long totalProbes;//?
+    // статистика за всё время
+    private long totalProbes;
     private long operationCount;
 
     public HashTable() {
         allocate(START_CAPACITY);
-    } //?
-
-    /** Вставка или замена. true - ключ новый, false - значение заменили. */
-    public boolean put(K key, V value) {
-        return doPut(key, value, true);
     }
 
-    /** Вставка только нового ключа. false - такой ключ уже есть, ничего не изменилось. */
-    public boolean putIfAbsent(K key, V value) {
-        return doPut(key, value, false);
-    }
+    // ---------- операции ----------
 
-    @SuppressWarnings("unchecked")
-    public V get(K key) {
-        checkKey(key);
-        int index = find(key);
-        finishOperation(index, false);
-        return index >= 0 ? (V) values[index] : null;
-    }
-
-    public boolean containsKey(K key) {
-        checkKey(key);
-        int index = find(key);
-        finishOperation(index, false);
-        return index >= 0;
-    }
-
-    /** Удаление. true - ключ был и удалён. */
-    public boolean remove(K key) {
-        checkKey(key);
-        int index = find(key);
-        if (index >= 0) {
-            keys[index] = null;
-            values[index] = null;
-            states[index] = SlotState.DELETED;
-            size--;
-            deleted++;
-        }
-        finishOperation(index, false);
-        return index >= 0;
-    }
-
-    @SuppressWarnings("unchecked")
-    public void forEach(BiConsumer<K, V> action) {
-        for (int i = 0; i < capacity; i++) {
-            if (states[i] == SlotState.OCCUPIED) {
-                action.accept((K) keys[i], (V) values[i]);
-            }
-        }
-    }
-
-    public void clear() {
-        allocate(START_CAPACITY);
-        size = 0;
-        deleted = 0;
-        lastPathLength = 0;
-        lastResultIndex = -1;
-        lastRehashed = false;
-        totalProbes = 0;
-        operationCount = 0;
-    }
-
-    private boolean doPut(K key, V value, boolean replaceIfExists) {
+    /** Вставка. Если такой ключ уже есть - значение заменяется. */
+    public void put(K key, V value) {
         checkKey(key);
 
         int index = find(key);
-        if (index >= 0) {                                  // ключ уже есть
-            if (replaceIfExists) {
-                values[index] = value;
-            }
+        if (index >= 0) {                               // ключ уже есть
+            values[index] = value;
             finishOperation(index, false);
-            return false;
+            return;
         }
 
         boolean rehashed = false;
-        if (size + deleted + 1 > MAX_LOAD * capacity) {    // таблица слишком заполнена
+        if (size + deleted + 1 > MAX_LOAD * capacity) { // таблица слишком заполнена
             rehash();
             rehashed = true;
-            find(key);                                     // заново, чтобы путь был по новой таблице
+            find(key);                                  // ищем заново: в новой таблице другие номера ячеек
         }
 
         int slot = freeSlotFor(key);
@@ -129,27 +68,55 @@ public class HashTable<K, V> {
         states[slot] = SlotState.OCCUPIED;
         size++;
         finishOperation(slot, rehashed);
-        return true;
     }
 
-    /** Ищет ключ. Возвращает номер ячейки или -1. Попутно записывает путь проб. */
+    /** Поиск. Возвращает значение или null, если такого ключа нет. */
+    @SuppressWarnings("unchecked")
+    public V get(K key) {
+        checkKey(key);
+        int index = find(key);
+        finishOperation(index, false);
+        if (index >= 0) {
+            return (V) values[index];
+        }
+        return null;
+    }
+
+    /** Удаление. Ячейка не очищается совсем, а помечается DELETED. */
+    public void remove(K key) {
+        checkKey(key);
+        int index = find(key);
+        if (index >= 0) {
+            keys[index] = null;
+            values[index] = null;
+            states[index] = SlotState.DELETED;
+            size--;
+            deleted++;
+        }
+        finishOperation(index, false);
+    }
+
+    // ---------- внутри ----------
+
+    /** Ищет ключ. Возвращает номер ячейки или -1. Заодно записывает путь проб. */
     private int find(Object key) {
         lastPathLength = 0;
         int i = indexFor(key);
         for (int step = 0; step < capacity; step++) {
-            lastPath[lastPathLength++] = i;
+            lastPath[lastPathLength] = i;
+            lastPathLength++;
             if (states[i] == SlotState.FREE) {
-                return -1;                                 // пустая ячейка - дальше ключа нет
+                return -1;                              // пустая ячейка: дальше ключа точно нет
             }
             if (states[i] == SlotState.OCCUPIED && keys[i].equals(key)) {
                 return i;
             }
-            i = (i + 1) % capacity;                        // шаг вправо по кругу
+            i = (i + 1) % capacity;                     // следующая ячейка, по кругу
         }
         return -1;
     }
 
-    /** Первая ячейка, куда можно положить ключ (не занятая). Идём тем же путём, что и поиск. */
+    /** Первая не занятая ячейка (FREE или DELETED), начиная с "родной" ячейки ключа. */
     private int freeSlotFor(Object key) {
         int i = indexFor(key);
         while (states[i] == SlotState.OCCUPIED) {
@@ -159,18 +126,19 @@ public class HashTable<K, V> {
     }
 
     private int indexFor(Object key) {
-        return (key.hashCode() & 0x7FFFFFFF) % capacity;   // & убирает знак: индекс не бывает отрицательным
+        return Math.abs(key.hashCode() % capacity);     // abs, чтобы номер не был отрицательным
     }
 
-    /** Увеличивает таблицу вдвое и перекладывает все живые элементы. DELETED при этом исчезают. */
+    /** Таблица становится вдвое больше, все элементы вставляются заново. */
     private void rehash() {
         Object[] oldKeys = keys;
         Object[] oldValues = values;
         SlotState[] oldStates = states;
+        int oldCapacity = capacity;
 
         allocate(capacity * 2);
         deleted = 0;
-        for (int i = 0; i < oldStates.length; i++) {
+        for (int i = 0; i < oldCapacity; i++) {
             if (oldStates[i] == SlotState.OCCUPIED) {
                 int slot = freeSlotFor(oldKeys[i]);
                 keys[slot] = oldKeys[i];
@@ -194,7 +162,7 @@ public class HashTable<K, V> {
     private void finishOperation(int resultIndex, boolean rehashed) {
         lastResultIndex = resultIndex;
         lastRehashed = rehashed;
-        totalProbes += lastPathLength;
+        totalProbes = totalProbes + lastPathLength;
         operationCount++;
     }
 
@@ -204,36 +172,30 @@ public class HashTable<K, V> {
         }
     }
 
-    // ---------- чтение состояния (для окна и тестов) ----------
+    // ---------- чтение состояния ----------
 
     public int size() { return size; }
     public int getCapacity() { return capacity; }
     public int getDeletedCount() { return deleted; }
-    public double getLoadFactor() { return (double) size / capacity; }
     public SlotState getSlotState(int index) { return states[index]; }
 
     @SuppressWarnings("unchecked")
-    public K getKeyAt(int index) { return states[index] == SlotState.OCCUPIED ? (K) keys[index] : null; }
+    public K getKeyAt(int index) { return (K) keys[index]; }
 
     @SuppressWarnings("unchecked")
-    public V getValueAt(int index) { return states[index] == SlotState.OCCUPIED ? (V) values[index] : null; }
+    public V getValueAt(int index) { return (V) values[index]; }
 
-    // ---------- статистика проб ----------
-
-    public int getLastProbes() { return lastPathLength; }
     public int getLastResultIndex() { return lastResultIndex; }
     public boolean wasLastRehashed() { return lastRehashed; }
     public long getTotalProbes() { return totalProbes; }
     public long getOperationCount() { return operationCount; }
 
-    public double getAverageProbes() {
-        return operationCount == 0 ? 0 : (double) totalProbes / operationCount;
-    }
-
-    /** Номера осмотренных ячеек в последней операции (копия). */
+    /** Номера ячеек, осмотренных в последней операции (копия). */
     public int[] getLastPath() {
         int[] copy = new int[lastPathLength];
-        System.arraycopy(lastPath, 0, copy, 0, lastPathLength);
+        for (int i = 0; i < lastPathLength; i++) {
+            copy[i] = lastPath[i];
+        }
         return copy;
     }
 }

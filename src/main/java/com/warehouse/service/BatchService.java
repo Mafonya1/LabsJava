@@ -9,34 +9,32 @@ import com.warehouse.structure.HashTable;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
+
 
 public final class BatchService {
 
-    // Основное хранилище - собственная хеш-таблица (ключ - артикул).
-    // LinkedHashMap из лаб. 1 убран: java.util-коллекции как хранилище запрещены.
+    // Хранилище - наша хеш-таблица (вместо LinkedHashMap из лабы 1). Ключ - артикул.
     private final HashTable<Integer, Batch> store = new HashTable<>();
     private final CsvLoader loader = new CsvLoader();
     private final CsvSaver saver = new CsvSaver();
 
-    /** Синхронная загрузка (используется при старте и в тестах). */
     public LoadResult load(Path file) {
         LoadResult result = loader.load(file);
-        addLoaded(result.loaded());
+        addAll(result.loaded());
         return result;
     }
 
-    /** Кладёт уже прочитанные партии в таблицу (при совпадении артикула запись заменяется). */
-    public void addLoaded(List<Batch> loaded) {
-        for (Batch b : loaded) {
+    /** Кладёт в таблицу пачку партий (из файла или сгенерированных). */
+    public void addAll(List<Batch> batches) {
+        for (Batch b : batches) {
             store.put(b.getArticle(), b);
         }
     }
 
     public void save(Path file) throws IOException {
-        // Список здесь - временный, только чтобы отдать данные CsvSaver. Хранилищем он не является.
-        saver.save(Arrays.asList(findAll()), file);
+        saver.save(findAll(), file);
     }
 
     public void add(Batch b) {
@@ -45,10 +43,11 @@ public final class BatchService {
         }
         List<String> errors = e.validate();
         if (!errors.isEmpty()) throw new IllegalArgumentException(String.join("; ", errors));
-        // putIfAbsent: один проход по таблице, существующую партию (в т.ч. архивную) не затрёт
-        if (!store.putIfAbsent(b.getArticle(), b)) {
+        // put заменил бы существующую партию (даже архивную), поэтому сначала проверяем
+        if (store.get(b.getArticle()) != null) {
             throw new IllegalArgumentException("Партия с артикулом " + b.getArticle() + " уже существует");
         }
+        store.put(b.getArticle(), b);
     }
 
     public void update(Batch b) {
@@ -65,34 +64,17 @@ public final class BatchService {
 
     public Batch find(int article) { return store.get(article); }
 
-    /**
-     * Все партии массивом (в порядке ячеек таблицы).
-     * Обходим ячейки напрямую, а не через get(), чтобы не портить статистику проб последней операции.
-     */
-    public Batch[] findAll() {
-        Batch[] result = new Batch[store.size()];
-        int n = 0;
+    /** Все партии списком. Обходим ячейки напрямую, чтобы не портить статистику проб. */
+    public List<Batch> findAll() {
+        List<Batch> result = new ArrayList<>();
         for (int i = 0; i < store.getCapacity(); i++) {
             if (store.getSlotState(i) == HashTable.SlotState.OCCUPIED) {
-                result[n++] = store.getValueAt(i);
+                result.add(store.getValueAt(i));
             }
         }
         return result;
     }
 
-    /** Добавляет пачку (например, сгенерированную). Партии с уже занятым артикулом пропускаются. @return сколько добавлено. */
-    public int addAll(Batch[] batches) {
-        int added = 0;
-        for (Batch b : batches) {
-            if (b != null && store.putIfAbsent(b.getArticle(), b)) added++;
-        }
-        return added;
-    }
-
-    public void clear() { store.clear(); }
-
-    public int size() { return store.size(); }
-
-    /** Нужна визуализации, чтобы читать внутреннее устройство таблицы. */
+    /** Нужна визуализации, чтобы нарисовать таблицу. */
     public HashTable<Integer, Batch> getTable() { return store; }
 }

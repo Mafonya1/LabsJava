@@ -2,17 +2,13 @@ package com.warehouse.ui;
 
 import com.warehouse.io.LoadError;
 import com.warehouse.io.LoadResult;
-import com.warehouse.io.serialization.Serializer;
-import com.warehouse.io.serialization.Serializers;
 import com.warehouse.model.ArchivedBatch;
 import com.warehouse.model.Batch;
 import com.warehouse.model.Editable;
 import com.warehouse.model.ImportedBatch;
 import com.warehouse.service.BatchService;
-import com.warehouse.ui.task.ExportTask;
 import com.warehouse.ui.task.GenerateTask;
-import com.warehouse.ui.task.ImportTask;
-import com.warehouse.ui.task.LoadCsvTask;
+import com.warehouse.ui.task.LoadTask;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -30,11 +26,12 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.ResourceBundle;
 
 public class MainController implements Initializable {
 
-    private static final int MAX_GENERATE = 200_000;
+    private static final int MAX_GENERATE = 200000;
 
     @FXML private TableView<Batch> tableView;
     @FXML private TableColumn<Batch, Integer> colArticle;
@@ -49,10 +46,8 @@ public class MainController implements Initializable {
     @FXML private Button btnDelete;
     @FXML private Button btnLoad;
     @FXML private Button btnGenerate;
-    @FXML private Button btnImport;   // лаб. 3
-    @FXML private Button btnExport;   // лаб. 3
+    @FXML private Button btnCancel;
 
-    // --- лаб. 2 ---
     @FXML private TextField tfSearch;
     @FXML private TextField tfCount;
     @FXML private ProgressBar progressBar;
@@ -60,9 +55,12 @@ public class MainController implements Initializable {
     @FXML private ScrollPane visualPane;
 
     private final HashTableView hashView = new HashTableView();
-
     private final BatchService service = new BatchService();
     private final ObservableList<Batch> rows = FXCollections.observableArrayList();
+
+    // фоновые задачи (null, пока задача не запущена)
+    private LoadTask loadTask;
+    private GenerateTask generateTask;
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -81,6 +79,7 @@ public class MainController implements Initializable {
         tableView.setItems(rows);
         btnEdit.setDisable(true);
         btnDelete.setDisable(true);
+        btnCancel.setDisable(true);
 
         tableView.getSelectionModel().selectedItemProperty().addListener((obs, old, nw) -> {
             boolean sel = nw != null;
@@ -89,7 +88,7 @@ public class MainController implements Initializable {
         });
 
         visualPane.setContent(hashView);
-        hashView.render(service.getTable(), "таблица пуста");
+        hashView.draw(service.getTable(), "таблица пуста");
 
         tryLoadDefaultFile();
     }
@@ -103,11 +102,13 @@ public class MainController implements Initializable {
         }
     }
 
-    /** Перечитывает таблицу из сервиса и перерисовывает визуализацию. */
+    /** Обновляет таблицу на экране и перерисовывает хеш-таблицу. Вызывается после каждой операции. */
     private void refresh(String operation) {
         rows.setAll(service.findAll());
-        hashView.render(service.getTable(), operation);
+        hashView.draw(service.getTable(), operation);
     }
+
+    // ---------- кнопки ----------
 
     @FXML
     private void handleAdd() {
@@ -133,7 +134,7 @@ public class MainController implements Initializable {
         if (updated != null) {
             try {
                 service.update(updated);
-                refresh("put(" + updated.getArticle() + ") — изменение");
+                refresh("put(" + updated.getArticle() + ") - изменение");
             } catch (Exception e) {
                 error("Ошибка редактирования", e.getMessage());
             }
@@ -150,7 +151,6 @@ public class MainController implements Initializable {
         }
     }
 
-    /** Поиск по артикулу: подсвечивает путь проб в таблице и выделяет строку. */
     @FXML
     private void handleFind() {
         int article;
@@ -162,7 +162,7 @@ public class MainController implements Initializable {
         }
 
         Batch found = service.find(article);
-        hashView.render(service.getTable(), "get(" + article + ")");
+        hashView.draw(service.getTable(), "get(" + article + ")");
 
         if (found == null) {
             lblStatus.setText("Артикул " + article + " не найден");
@@ -174,7 +174,22 @@ public class MainController implements Initializable {
         }
     }
 
-    // ===================== фоновые операции =====================
+    @FXML
+    private void handleSave() {
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Сохранить CSV");
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV", "*.csv"));
+        File f = fc.showSaveDialog(window());
+        if (f != null) {
+            try {
+                service.save(f.toPath());
+            } catch (IOException e) {
+                error("Ошибка сохранения", e.getMessage());
+            }
+        }
+    }
+
+    // ---------- фоновые задачи: загрузка и генерация ----------
 
     @FXML
     private void handleLoad() {
@@ -186,17 +201,11 @@ public class MainController implements Initializable {
             return;
         }
 
-        Path file = f.toPath();
-        LoadCsvTask task = new LoadCsvTask(file);
-        task.setOnSucceeded(e -> {                       // выполняется в потоке JavaFX
-            LoadResult r = task.getValue();
-            service.addLoaded(r.loaded());
-            refresh("загрузка " + file.getFileName());
-            finishBackground("Загружено записей: " + r.loaded().size());
-            if (r.hasErrors()) showErrors(r);
-        });
-        task.setOnFailed(e -> failBackground("Ошибка загрузки", task));
-        startBackground(task, "Загрузка файла...");
+        loadTask = new LoadTask(f.toPath());
+        loadTask.setOnSucceeded(e -> loadFinished());     // когда задача закончится - вызвать loadFinished()
+        loadTask.setOnFailed(e -> taskFailed(loadTask));
+        loadTask.setOnCancelled(e -> taskCancelled());
+        startTask(loadTask, "Загрузка файла...");
     }
 
     @FXML
@@ -213,138 +222,73 @@ public class MainController implements Initializable {
             return;
         }
 
-        final int requested = count;
-        GenerateTask task = new GenerateTask(requested);
-        task.setOnSucceeded(e -> {
-            int added = service.addAll(task.getValue());
-            refresh("генерация: добавлено " + added);
-            finishBackground("Сгенерировано: " + added + " из " + requested);
-        });
-        task.setOnFailed(e -> failBackground("Ошибка генерации", task));
-        startBackground(task, "Генерация...");
-    }
-
-    // ===================== лаб. 3: экспорт / импорт (JSON и бинарный формат) =====================
-
-    @FXML
-    private void handleExport() {
-        FileChooser fc = serializationChooser("Экспорт данных");
-        File f = fc.showSaveDialog(window());
-        if (f == null) {
-            return;
-        }
-
-        Path path = withExtension(f, fc);
-        Serializer serializer;
-        try {
-            serializer = Serializers.forFile(path);       // выбор формата по расширению
-        } catch (IllegalArgumentException e) {
-            error("Экспорт", e.getMessage());
-            return;
-        }
-
-        Batch[] snapshot = service.findAll();             // снимок данных, снятый в потоке JavaFX
-        ExportTask task = new ExportTask(serializer, snapshot, path);
-        task.setOnSucceeded(e -> finishBackground(
-                "Экспортировано записей: " + snapshot.length + " → " + path.getFileName()));
-        task.setOnFailed(e -> failBackground("Ошибка экспорта", task));
-        startBackground(task, "Экспорт...");
+        generateTask = new GenerateTask(count);
+        generateTask.setOnSucceeded(e -> generateFinished());
+        generateTask.setOnFailed(e -> taskFailed(generateTask));
+        generateTask.setOnCancelled(e -> taskCancelled());
+        startTask(generateTask, "Генерация...");
     }
 
     @FXML
-    private void handleImport() {
-        FileChooser fc = serializationChooser("Импорт данных");
-        File f = fc.showOpenDialog(window());
-        if (f == null) {
-            return;
+    private void handleCancel() {
+        if (loadTask != null) {
+            loadTask.cancel();
         }
-
-        Path path = f.toPath();
-        Serializer serializer;
-        try {
-            serializer = Serializers.forFile(path);
-        } catch (IllegalArgumentException e) {
-            error("Импорт", e.getMessage());
-            return;
+        if (generateTask != null) {
+            generateTask.cancel();
         }
-
-        ImportTask task = new ImportTask(serializer, path);
-        task.setOnSucceeded(e -> {                         // поток JavaFX
-            Batch[] loaded = task.getValue();
-            service.clear();                               // очищаем ТОЛЬКО после успешного чтения файла
-            int added = service.addAll(loaded);
-            refresh("импорт " + path.getFileName());       // обновляются и таблица, и визуализация
-            finishBackground("Импортировано: " + added + " из " + loaded.length);
-        });
-        task.setOnFailed(e -> failBackground("Ошибка импорта (файл повреждён или неверный формат)", task));
-        startBackground(task, "Импорт...");
     }
 
-    private FileChooser serializationChooser(String title) {
-        FileChooser fc = new FileChooser();
-        fc.setTitle(title);
-        fc.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("JSON", "*.json"),
-                new FileChooser.ExtensionFilter("Бинарный (Serializable)", "*.bin"));
-        return fc;
-    }
-
-    /** Если пользователь не набрал расширение - берём его из выбранного фильтра. */
-    private Path withExtension(File file, FileChooser chooser) {
-        String name = file.getName().toLowerCase();
-        if (name.endsWith(".json") || name.endsWith(".bin")) {
-            return file.toPath();
+    private void loadFinished() {
+        LoadResult result = loadTask.getValue();
+        service.addAll(result.loaded());                  // кладём в таблицу уже в потоке JavaFX
+        refresh("загрузка файла");
+        endTask("Загружено записей: " + result.loaded().size());
+        if (result.hasErrors()) {
+            showErrors(result);
         }
-        FileChooser.ExtensionFilter filter = chooser.getSelectedExtensionFilter();
-        String extension = (filter != null && filter.getExtensions().contains("*.bin")) ? ".bin" : ".json";
-        return file.toPath().resolveSibling(file.getName() + extension);
     }
 
-    private void startBackground(Task<?> task, String statusText) {
-        setBusy(true);
-        lblStatus.setText(statusText);
+    private void generateFinished() {
+        List<Batch> generated = generateTask.getValue();
+        service.addAll(generated);
+        refresh("генерация");
+        endTask("Сгенерировано: " + generated.size() + ", в таблице: " + service.getTable().size());
+    }
+
+    private void taskFailed(Task<?> task) {
+        endTask("Ошибка");
+        error("Ошибка", task.getException().getMessage());
+    }
+
+    private void taskCancelled() {
+        endTask("Операция отменена");
+    }
+
+    private void startTask(Task<?> task, String text) {
+        btnLoad.setDisable(true);
+        btnGenerate.setDisable(true);
+        btnCancel.setDisable(false);
+        lblStatus.setText(text);
         progressBar.progressProperty().bind(task.progressProperty());   // полоска следует за задачей
+
         Thread thread = new Thread(task);
-        thread.setDaemon(true);                                         // не мешает закрытию программы
+        thread.setDaemon(true);
         thread.start();
     }
 
-    private void finishBackground(String statusText) {
+    private void endTask(String text) {
         progressBar.progressProperty().unbind();
         progressBar.setProgress(0);
-        lblStatus.setText(statusText);
-        setBusy(false);
+        lblStatus.setText(text);
+        btnLoad.setDisable(false);
+        btnGenerate.setDisable(false);
+        btnCancel.setDisable(true);
+        loadTask = null;
+        generateTask = null;
     }
 
-    private void failBackground(String title, Task<?> task) {
-        finishBackground("Ошибка");
-        Throwable ex = task.getException();
-        error(title, ex == null ? "Неизвестная ошибка" : String.valueOf(ex.getMessage()));
-    }
-
-    private void setBusy(boolean busy) {
-        btnLoad.setDisable(busy);
-        btnGenerate.setDisable(busy);
-        btnImport.setDisable(busy);
-        btnExport.setDisable(busy);
-    }
-
-    // ===================== остальное без изменений =====================
-
-    @FXML
-    private void handleSave() {
-        FileChooser fc = new FileChooser();
-        fc.setTitle("Сохранить CSV");
-        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV", "*.csv"));
-        File f = fc.showSaveDialog(window());
-        if (f != null) {
-            try {
-                service.save(f.toPath());
-            } catch (IOException e) {
-                error("Ошибка сохранения", e.getMessage());
-            }
-        }
-    }
+    // ---------- вспомогательное ----------
 
     private Batch showDialog(Batch existing) {
         try {

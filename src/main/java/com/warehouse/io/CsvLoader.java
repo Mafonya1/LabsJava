@@ -4,6 +4,7 @@ import com.warehouse.model.ArchivedBatch;
 import com.warehouse.model.Batch;
 import com.warehouse.model.ImportedBatch;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -13,19 +14,7 @@ import java.util.List;
 
 public final class CsvLoader {
 
-    /** Колбэк прогресса: сколько строк уже обработано из скольких. */
-    public interface ProgressListener {
-        void onProgress(int done, int total);
-    }
-
-    private static final int PROGRESS_STEP = 200; // как часто сообщать о прогрессе (раз в N строк)
-
     public LoadResult load(Path file) {
-        return load(file, null);
-    }
-
-    /** То же, что load(file), но сообщает о прогрессе (progress может быть null). */
-    public LoadResult load(Path file, ProgressListener progress) {
         List<Batch> loaded = new ArrayList<>();
         List<LoadError> errors = new ArrayList<>();
 
@@ -35,21 +24,16 @@ public final class CsvLoader {
             return new LoadResult(loaded, errors);
         }
 
-        try {
-            List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
-            int total = lines.size();
-            for (int i = 0; i < total; i++) {
-                int lineNo = i + 1;
-                String line = lines.get(i);
-                if (!line.isBlank()) {
-                    try {
-                        loaded.add(parseLine(line));
-                    } catch (CsvLoadException e) {
-                        errors.add(new LoadError(lineNo, line, e.getCode(), e.getMessage()));
-                    }
-                }
-                if (progress != null && (lineNo % PROGRESS_STEP == 0 || lineNo == total)) {
-                    progress.onProgress(lineNo, total);
+        try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
+            String line;
+            int lineNo = 0;
+            while ((line = reader.readLine()) != null) {
+                lineNo++;
+                if (line.isBlank()) continue;
+                try {
+                    loaded.add(parseLine(line));
+                } catch (CsvLoadException e) {
+                    errors.add(new LoadError(lineNo, line, e.getCode(), e.getMessage()));
                 }
             }
         } catch (IOException e) {
@@ -59,7 +43,7 @@ public final class CsvLoader {
         return new LoadResult(loaded, errors);
     }
 
-    private Batch parseLine(String line) {
+    public Batch parseLine(String line) {
         String[] p = line.split(";", -1);
         if (p.length == 0) {
             throw new CsvLoadException(LoadError.ErrorCode.EMPTY_LINE, "Пустая строка");
