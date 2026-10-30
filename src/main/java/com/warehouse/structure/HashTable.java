@@ -42,7 +42,7 @@ public class HashTable<K, V> {
     // ---------- операции ----------
 
     /** Вставка. Если такой ключ уже есть - значение заменяется. */
-    public void put(K key, V value) {
+    public synchronized void put(K key, V value) {
         checkKey(key);
 
         int index = find(key);
@@ -72,7 +72,7 @@ public class HashTable<K, V> {
 
     /** Поиск. Возвращает значение или null, если такого ключа нет. */
     @SuppressWarnings("unchecked")
-    public V get(K key) {
+    public synchronized V get(K key) {
         checkKey(key);
         int index = find(key);
         finishOperation(index, false);
@@ -83,7 +83,7 @@ public class HashTable<K, V> {
     }
 
     /** Удаление. Ячейка не очищается совсем, а помечается DELETED. */
-    public void remove(K key) {
+    public synchronized void remove(K key) {
         checkKey(key);
         int index = find(key);
         if (index >= 0) {
@@ -174,24 +174,24 @@ public class HashTable<K, V> {
 
     // ---------- чтение состояния ----------
 
-    public int size() { return size; }
-    public int getCapacity() { return capacity; }
-    public int getDeletedCount() { return deleted; }
-    public SlotState getSlotState(int index) { return states[index]; }
+    public synchronized int size() { return size; }
+    public synchronized int getCapacity() { return capacity; }
+    public synchronized int getDeletedCount() { return deleted; }
+    public synchronized SlotState getSlotState(int index) { return states[index]; }
 
     @SuppressWarnings("unchecked")
-    public K getKeyAt(int index) { return (K) keys[index]; }
+    public synchronized K getKeyAt(int index) { return (K) keys[index]; }
 
     @SuppressWarnings("unchecked")
-    public V getValueAt(int index) { return (V) values[index]; }
+    public synchronized V getValueAt(int index) { return (V) values[index]; }
 
-    public int getLastResultIndex() { return lastResultIndex; }
-    public boolean wasLastRehashed() { return lastRehashed; }
-    public long getTotalProbes() { return totalProbes; }
-    public long getOperationCount() { return operationCount; }
+    public synchronized int getLastResultIndex() { return lastResultIndex; }
+    public synchronized boolean wasLastRehashed() { return lastRehashed; }
+    public synchronized  long getTotalProbes() { return totalProbes; }
+    public synchronized long getOperationCount() { return operationCount; }
 
     /** Номера ячеек, осмотренных в последней операции (копия). */
-    public int[] getLastPath() {
+    public synchronized int[] getLastPath() {
         int[] copy = new int[lastPathLength];
         for (int i = 0; i < lastPathLength; i++) {
             copy[i] = lastPath[i];
