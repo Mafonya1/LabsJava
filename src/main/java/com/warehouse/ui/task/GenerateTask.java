@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-/** Генерация нужного числа партий в фоновом потоке. Создаёт только импортные партии. */
+/** Генерация нужного числа партий в фоновом потоке */
 public class GenerateTask extends Task<List<Batch>> {
 
     private static final String[] NAMES = {"Болт", "Гайка", "Шайба", "Кабель", "Подшипник", "Фильтр"};

@@ -6,20 +6,16 @@ import com.warehouse.structure.HashTable;
 
 import java.util.Random;
 
-/**
- * Замеры времени для отчёта (таблица для среднего уровня).
- * Запуск: правая кнопка на файле -> Run 'HashTableBenchmark.main()'.
- * В консоль выводится готовая таблица: время в мс и среднее число проб на операцию.
- */
+//Замеры времени для отчёта
 public class HashTableBenchmark {
 
-    private static final int RANGE = 100000000;   // ключи берём из [0, RANGE)
+    private static final int RANGE = 100000000;
 
     public static void main(String[] args) {
         int[] sizes = {10000, 100000};
         String[] names = {"Вставка", "Поиск (ключ есть)", "Поиск (ключа нет)", "Удаление"};
 
-        // первый запуск "прогревает" Java, его результат не берём
+        // первый запуск, его результат не берём
         measure(10000, new double[4], new double[4]);
 
         double[][] ms = new double[sizes.length][4];
@@ -29,7 +25,6 @@ public class HashTableBenchmark {
         }
 
         System.out.println("| Операция | " + sizes[0] + " записей | " + sizes[1] + " записей |");
-        System.out.println("|---|---|---|");
         for (int op = 0; op < 4; op++) {
             System.out.println("| " + names[op]
                     + " | " + format(ms[0][op], probes[0][op])
@@ -74,7 +69,7 @@ public class HashTableBenchmark {
         ms[1] = (System.nanoTime() - startTime) / 1000000.0;
         probes[1] = (double) (table.getTotalProbes() - startProbes) / (table.getOperationCount() - startOperations);
 
-        // 3. поиск ключей, которых нет (они больше RANGE)
+        // 3. поиск ключей, которых нет
         startProbes = table.getTotalProbes();
         startOperations = table.getOperationCount();
         startTime = System.nanoTime();

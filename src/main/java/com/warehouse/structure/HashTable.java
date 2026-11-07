@@ -1,16 +1,5 @@
 package com.warehouse.structure;
 
-/**
- * Хеш-таблица: открытая адресация + линейное пробирование.
- *
- * Данные лежат в трёх массивах одной длины. Ячейка номер i - это
- * keys[i], values[i] и states[i].
- * Состояние ячейки: FREE (пустая), OCCUPIED (занята), DELETED (элемент удалили).
- *
- * Ключ "хочет" лежать в ячейке с номером (hash % capacity). Если она занята другим ключом,
- * смотрим следующую (+1, по кругу) и так далее. Каждая осмотренная ячейка - это одна проба.
- * DELETED нужен, чтобы после удаления цепочка проб не обрывалась.
- */
 public class HashTable<K, V> {
 
     public enum SlotState { FREE, OCCUPIED, DELETED }
@@ -25,7 +14,7 @@ public class HashTable<K, V> {
     private int size;      // сколько ячеек занято
     private int deleted;   // сколько ячеек DELETED
 
-    // статистика последней операции (для визуализации)
+    // статистика последней операции
     private int[] lastPath = new int[0];   // номера осмотренных ячеек по порядку
     private int lastPathLength;            // сколько ячеек осмотрели (= число проб)
     private int lastResultIndex = -1;      // итоговая ячейка (-1 - ничего не нашли)
@@ -82,7 +71,7 @@ public class HashTable<K, V> {
         return null;
     }
 
-    /** Удаление. Ячейка не очищается совсем, а помечается DELETED. */
+    /** Удаление. Ячейка помечается DELETED. */
     public synchronized void remove(K key) {
         checkKey(key);
         int index = find(key);
@@ -96,9 +85,7 @@ public class HashTable<K, V> {
         finishOperation(index, false);
     }
 
-    // ---------- внутри ----------
-
-    /** Ищет ключ. Возвращает номер ячейки или -1. Заодно записывает путь проб. */
+    /** Ищет ключ. Возвращает номер ячейки или -1. Записывает путь проб. */
     private int find(Object key) {
         lastPathLength = 0;
         int i = indexFor(key);
@@ -106,17 +93,17 @@ public class HashTable<K, V> {
             lastPath[lastPathLength] = i;
             lastPathLength++;
             if (states[i] == SlotState.FREE) {
-                return -1;                              // пустая ячейка: дальше ключа точно нет
+                return -1;
             }
             if (states[i] == SlotState.OCCUPIED && keys[i].equals(key)) {
                 return i;
             }
-            i = (i + 1) % capacity;                     // следующая ячейка, по кругу
+            i = (i + 1) % capacity;
         }
         return -1;
     }
 
-    /** Первая не занятая ячейка (FREE или DELETED), начиная с "родной" ячейки ключа. */
+    /** Первая не занятая ячейка (FREE или DELETED). */
     private int freeSlotFor(Object key) {
         int i = indexFor(key);
         while (states[i] == SlotState.OCCUPIED) {
@@ -126,7 +113,7 @@ public class HashTable<K, V> {
     }
 
     private int indexFor(Object key) {
-        return Math.abs(key.hashCode() % capacity);     // abs, чтобы номер не был отрицательным
+        return Math.abs(key.hashCode() % capacity);
     }
 
     /** Таблица становится вдвое больше, все элементы вставляются заново. */
@@ -172,8 +159,6 @@ public class HashTable<K, V> {
         }
     }
 
-    // ---------- чтение состояния ----------
-
     public synchronized int size() { return size; }
     public synchronized int getCapacity() { return capacity; }
     public synchronized int getDeletedCount() { return deleted; }
@@ -190,7 +175,7 @@ public class HashTable<K, V> {
     public synchronized  long getTotalProbes() { return totalProbes; }
     public synchronized long getOperationCount() { return operationCount; }
 
-    /** Номера ячеек, осмотренных в последней операции (копия). */
+    /** Номера ячеек */
     public synchronized int[] getLastPath() {
         int[] copy = new int[lastPathLength];
         for (int i = 0; i < lastPathLength; i++) {

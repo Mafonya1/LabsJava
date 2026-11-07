@@ -15,7 +15,7 @@ import java.util.List;
 
 public final class BatchService {
 
-    // Хранилище - наша хеш-таблица (вместо LinkedHashMap из лабы 1). Ключ - артикул.
+    // Хранилище - наша хеш-таблица Ключ - артикул.
     private final HashTable<Integer, Batch> store = new HashTable<>();
     private final CsvLoader loader = new CsvLoader();
     private final CsvSaver saver = new CsvSaver();
@@ -40,7 +40,7 @@ public final class BatchService {
     public void add(Batch b) {
         if (!(b instanceof Editable e)) {
             throw new IllegalArgumentException("Добавлять можно только редактируемые типы");
-        }
+        } 
         List<String> errors = e.validate();
         if (!errors.isEmpty()) throw new IllegalArgumentException(String.join("; ", errors));
         // put заменил бы существующую партию (даже архивную), поэтому сначала проверяем
@@ -75,6 +75,5 @@ public final class BatchService {
         return result;
     }
 
-    /** Нужна визуализации, чтобы нарисовать таблицу. */
     public HashTable<Integer, Batch> getTable() { return store; }
 }

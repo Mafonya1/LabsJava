@@ -1,35 +1,23 @@
 package com.warehouse.structure;
 
-/**
- * Хеш-таблица: открытая адресация + линейное пробирование.
- *
- * Данные лежат в трёх массивах одной длины. Ячейка номер i - это
- * keys[i], values[i] и states[i].
- * Состояние ячейки: FREE (пустая), OCCUPIED (занята), DELETED (элемент удалили).
- *
- * Ключ "хочет" лежать в ячейке с номером (hash % capacity). Если она занята другим ключом,
- * смотрим следующую (+1, по кругу) и так далее. Каждая осмотренная ячейка - это одна проба.
- * DELETED нужен, чтобы после удаления цепочка проб не обрывалась.
- */
 public class HashTableUnsafe<K, V> {
 
     public enum SlotState { FREE, OCCUPIED, DELETED }
 
     private static final int START_CAPACITY = 16;
-    private static final double MAX_LOAD = 0.75;   // если заполнено больше - делаем рехеш
+    private static final double MAX_LOAD = 0.75;
 
     private Object[] keys;
     private Object[] values;
     private SlotState[] states;
     private int capacity;
-    private int size;      // сколько ячеек занято
-    private int deleted;   // сколько ячеек DELETED
+    private int size;
+    private int deleted;
 
-    // статистика последней операции (для визуализации)
-    private int[] lastPath = new int[0];   // номера осмотренных ячеек по порядку
-    private int lastPathLength;            // сколько ячеек осмотрели (= число проб)
-    private int lastResultIndex = -1;      // итоговая ячейка (-1 - ничего не нашли)
-    private boolean lastRehashed;          // был ли рехеш в этой операции
+    private int[] lastPath = new int[0];
+    private int lastPathLength;
+    private int lastResultIndex = -1;
+    private boolean lastRehashed;
 
     // статистика за всё время
     private long totalProbes;
@@ -39,24 +27,22 @@ public class HashTableUnsafe<K, V> {
         allocate(START_CAPACITY);
     }
 
-    // ---------- операции ----------
 
-    /** Вставка. Если такой ключ уже есть - значение заменяется. */
     public void put(K key, V value) {
         checkKey(key);
 
         int index = find(key);
-        if (index >= 0) {                               // ключ уже есть
+        if (index >= 0) {
             values[index] = value;
             finishOperation(index, false);
             return;
         }
 
         boolean rehashed = false;
-        if (size + deleted + 1 > MAX_LOAD * capacity) { // таблица слишком заполнена
+        if (size + deleted + 1 > MAX_LOAD * capacity) {
             rehash();
             rehashed = true;
-            find(key);                                  // ищем заново: в новой таблице другие номера ячеек
+            find(key);
         }
 
         int slot = freeSlotFor(key);
@@ -69,8 +55,6 @@ public class HashTableUnsafe<K, V> {
         size++;
         finishOperation(slot, rehashed);
     }
-
-    /** Поиск. Возвращает значение или null, если такого ключа нет. */
     @SuppressWarnings("unchecked")
     public V get(K key) {
         checkKey(key);
@@ -82,7 +66,6 @@ public class HashTableUnsafe<K, V> {
         return null;
     }
 
-    /** Удаление. Ячейка не очищается совсем, а помечается DELETED. */
     public void remove(K key) {
         checkKey(key);
         int index = find(key);
@@ -96,9 +79,6 @@ public class HashTableUnsafe<K, V> {
         finishOperation(index, false);
     }
 
-    // ---------- внутри ----------
-
-    /** Ищет ключ. Возвращает номер ячейки или -1. Заодно записывает путь проб. */
     private int find(Object key) {
         lastPathLength = 0;
         int i = indexFor(key);
@@ -106,17 +86,15 @@ public class HashTableUnsafe<K, V> {
             lastPath[lastPathLength] = i;
             lastPathLength++;
             if (states[i] == SlotState.FREE) {
-                return -1;                              // пустая ячейка: дальше ключа точно нет
+                return -1;
             }
             if (states[i] == SlotState.OCCUPIED && keys[i].equals(key)) {
                 return i;
             }
-            i = (i + 1) % capacity;                     // следующая ячейка, по кругу
+            i = (i + 1) % capacity;
         }
         return -1;
     }
-
-    /** Первая не занятая ячейка (FREE или DELETED), начиная с "родной" ячейки ключа. */
     private int freeSlotFor(Object key) {
         int i = indexFor(key);
         while (states[i] == SlotState.OCCUPIED) {
@@ -129,7 +107,6 @@ public class HashTableUnsafe<K, V> {
         return Math.abs(key.hashCode() % capacity);     // abs, чтобы номер не был отрицательным
     }
 
-    /** Таблица становится вдвое больше, все элементы вставляются заново. */
     private void rehash() {
         Object[] oldKeys = keys;
         Object[] oldValues = values;
@@ -172,8 +149,6 @@ public class HashTableUnsafe<K, V> {
         }
     }
 
-    // ---------- чтение состояния ----------
-
     public int size() { return size; }
     public int getCapacity() { return capacity; }
     public int getDeletedCount() { return deleted; }
@@ -190,7 +165,6 @@ public class HashTableUnsafe<K, V> {
     public  long getTotalProbes() { return totalProbes; }
     public long getOperationCount() { return operationCount; }
 
-    /** Номера ячеек, осмотренных в последней операции (копия). */
     public int[] getLastPath() {
         int[] copy = new int[lastPathLength];
         for (int i = 0; i < lastPathLength; i++) {

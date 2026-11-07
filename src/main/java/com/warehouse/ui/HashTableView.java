@@ -6,12 +6,6 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 
-/**
- * Панель, на которой рисуется хеш-таблица. Каждая ячейка - прямоугольник.
- * Цвета: белый - свободна, голубой - занята, серый - удалена,
- *        жёлтый - ячейка осмотрена в последней операции, зелёный - итоговая ячейка.
- * Метод draw() вызывается после КАЖДОЙ операции и рисует всё заново.
- */
 public class HashTableView extends Canvas {
 
     private static final int COLUMNS = 8;           // ячеек в строке

@@ -58,7 +58,7 @@ public class MainController implements Initializable {
     private final BatchService service = new BatchService();
     private final ObservableList<Batch> rows = FXCollections.observableArrayList();
 
-    // фоновые задачи (null, пока задача не запущена)
+    // фоновые задачи
     private LoadTask loadTask;
     private GenerateTask generateTask;
 
@@ -102,9 +102,10 @@ public class MainController implements Initializable {
         }
     }
 
-    /** Обновляет таблицу на экране и перерисовывает хеш-таблицу. Вызывается после каждой операции. */
+    /** Обновляет таблицу на экране и перерисовывает хеш-таблицу */
     private void refresh(String operation) {
         rows.setAll(service.findAll());
+
         hashView.draw(service.getTable(), operation);
     }
 
@@ -189,7 +190,7 @@ public class MainController implements Initializable {
         }
     }
 
-    // ---------- фоновые задачи: загрузка и генерация ----------
+    // ---------- фоновые задачи ----------
 
     @FXML
     private void handleLoad() {

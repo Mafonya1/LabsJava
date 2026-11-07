@@ -3,8 +3,6 @@ package com.warehouse.tools;
 import com.warehouse.structure.HashTable;
 import com.warehouse.structure.HashTableUnsafe;
 
-import java.util.concurrent.CyclicBarrier;
-
 public class ConcurrencyDemo {
 
     public static void main(String[] args) throws InterruptedException {

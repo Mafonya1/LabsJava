@@ -35,7 +35,7 @@ public class LoadTask extends Task<LoadResult> {
 
         for (int i = 0; i < lines.size(); i++) {
             if (isCancelled()) {
-                return null;                 // пользователь нажал "Отмена"
+                return null;                 // Отмена
             }
             String line = lines.get(i);
             if (!line.isBlank()) {
