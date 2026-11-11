@@ -43,7 +43,7 @@ public final class CsvLoader {
         return new LoadResult(loaded, errors);
     }
 
-    private Batch parseLine(String line) {
+    public Batch parseLine(String line) {
         String[] p = line.split(";", -1);
         if (p.length == 0) {
             throw new CsvLoadException(LoadError.ErrorCode.EMPTY_LINE, "Пустая строка");

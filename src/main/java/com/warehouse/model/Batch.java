@@ -3,7 +3,6 @@ package com.warehouse.model;
 import java.io.Serializable;
 
 public abstract class Batch implements Serializable {
-    private static final long serialVersionUID = 1L;
 
     private final int article;
     private final String name;

@@ -10,7 +10,7 @@ public class MainApp extends Application {
     public void start(Stage stage) throws Exception {
         FXMLLoader loader = new FXMLLoader(MainApp.class.getResource("/com.warehouse/main.fxml"));
         stage.setScene(new Scene(loader.load()));
-        stage.setTitle("Склад — лабораторная №1");
+        stage.setTitle("Склад");
         stage.show();
     }
 

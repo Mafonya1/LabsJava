@@ -43,6 +43,12 @@ public class BatchDialogController {
 
             ImportedBatch b = new ImportedBatch(article, name, qty, cell, date, country, code);
             var errors = b.validate();
+            if (!date.matches("\\d{2}\\.\\d{2}\\.\\d{4}")) {
+                errors.add("Дата должна быть в формате ДД.ММ.ГГГГ (например, 12.05.2026)");
+            }
+            if (!country.matches("[a-zA-Zа-яА-ЯёЁ\\s\\-]+")) {
+                errors.add("Название страны должно содержать только буквы");
+            }
             if (!errors.isEmpty()) {
                 new Alert(Alert.AlertType.ERROR, String.join("\n", errors), javafx.scene.control.ButtonType.OK).showAndWait();
                 return;

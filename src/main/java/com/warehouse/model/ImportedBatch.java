@@ -6,8 +6,6 @@ import java.util.List;
 
 
 public class ImportedBatch extends Batch implements Editable, Serializable {
-    private static final long serialVersionUID = 1L;
-
     private final String country;
     private final String customsCode;
 

@@ -5,38 +5,46 @@ import com.warehouse.io.CsvSaver;
 import com.warehouse.io.LoadResult;
 import com.warehouse.model.Batch;
 import com.warehouse.model.Editable;
+import com.warehouse.structure.HashTable;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 
 public final class BatchService {
 
-    private final Map<Integer, Batch> store = new LinkedHashMap<>();
+    // Хранилище - наша хеш-таблица Ключ - артикул.
+    private final HashTable<Integer, Batch> store = new HashTable<>();
     private final CsvLoader loader = new CsvLoader();
     private final CsvSaver saver = new CsvSaver();
 
     public LoadResult load(Path file) {
         LoadResult result = loader.load(file);
-        for (Batch b : result.loaded()) store.put(b.getArticle(), b);
+        addAll(result.loaded());
         return result;
     }
 
+    /** Кладёт в таблицу пачку партий (из файла или сгенерированных). */
+    public void addAll(List<Batch> batches) {
+        for (Batch b : batches) {
+            store.put(b.getArticle(), b);
+        }
+    }
+
     public void save(Path file) throws IOException {
-        saver.save(new ArrayList<>(store.values()), file);
+        saver.save(findAll(), file);
     }
 
     public void add(Batch b) {
         if (!(b instanceof Editable e)) {
             throw new IllegalArgumentException("Добавлять можно только редактируемые типы");
-        }
+        } 
         List<String> errors = e.validate();
         if (!errors.isEmpty()) throw new IllegalArgumentException(String.join("; ", errors));
-        if (store.containsKey(b.getArticle())) {
+        // put заменил бы существующую партию (даже архивную), поэтому сначала проверяем
+        if (store.get(b.getArticle()) != null) {
             throw new IllegalArgumentException("Партия с артикулом " + b.getArticle() + " уже существует");
         }
         store.put(b.getArticle(), b);
@@ -56,5 +64,16 @@ public final class BatchService {
 
     public Batch find(int article) { return store.get(article); }
 
-    public List<Batch> findAll() { return new ArrayList<>(store.values()); }
+    /** Все партии списком. Обходим ячейки напрямую, чтобы не портить статистику проб. */
+    public List<Batch> findAll() {
+        List<Batch> result = new ArrayList<>();
+        for (int i = 0; i < store.getCapacity(); i++) {
+            if (store.getSlotState(i) == HashTable.SlotState.OCCUPIED) {
+                result.add(store.getValueAt(i));
+            }
+        }
+        return result;
+    }
+
+    public HashTable<Integer, Batch> getTable() { return store; }
 }
