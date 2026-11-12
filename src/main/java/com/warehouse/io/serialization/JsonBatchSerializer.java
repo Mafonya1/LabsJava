@@ -28,9 +28,9 @@ public final class JsonBatchSerializer implements Serializer{
 
     @Override
     public void save(HashTable<Integer, Batch> table, Path file) throws IOException {
-        // Достаём все элементы из таблицы (например, через ваш метод values() или итератор)
         List<Batch> items = table.values();
-        mapper.writeValue(file.toFile(), items);
+        mapper.writerFor(new TypeReference<List<Batch>>() {})
+                .writeValue(file.toFile(), items);
     }
 
     @Override

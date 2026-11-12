@@ -1,9 +1,11 @@
 package com.warehouse.structure;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class HashTable<K, V> {
+public class HashTable<K, V> implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     public enum SlotState { FREE, OCCUPIED, DELETED }
 
@@ -162,10 +164,10 @@ public class HashTable<K, V> {
         }
     }
 
-    public List<V> values() {
+    @SuppressWarnings("unchecked")
+    public synchronized List<V> values() {
         List<V> result = new ArrayList<>(size);
         for (int i = 0; i < values.length; i++) {
-            // Проверьте, как у вас называются массив ячеек, статус занятости и поле значения
             if (values[i] != null && states[i] == SlotState.OCCUPIED) {
                 result.add((V) values[i]);
             }
@@ -173,6 +175,24 @@ public class HashTable<K, V> {
         return result;
     }
 
+    @Override
+    public synchronized boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof HashTable<?, ?> other)) return false;
+        if (this.size != other.size) return false;
+
+        for (int i = 0; i < capacity; i++) {
+            if (states[i] == SlotState.OCCUPIED) {
+                Object key = keys[i];
+                Object val = values[i];
+                Object otherVal = ((HashTable<Object, Object>) other).get(key);
+                if (!java.util.Objects.equals(val, otherVal)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
 
     public synchronized int size() { return size; }
     public synchronized int getCapacity() { return capacity; }

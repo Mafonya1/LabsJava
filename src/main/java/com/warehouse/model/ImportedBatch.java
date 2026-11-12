@@ -1,5 +1,8 @@
 package com.warehouse.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,8 +12,9 @@ public class ImportedBatch extends Batch implements Editable, Serializable {
     private final String country;
     private final String customsCode;
 
-    public ImportedBatch(int article, String name, int quantity, int cell,
-                         String arrivalDate, String country, String customsCode) {
+    @JsonCreator
+    public ImportedBatch(@JsonProperty("article") int article, @JsonProperty("name") String name, @JsonProperty("quantity") int quantity, @JsonProperty("cell") int cell,
+                         @JsonProperty("arrivalDate") String arrivalDate, @JsonProperty("country") String country, @JsonProperty("customsCode") String customsCode) {
         super(article, name, quantity, cell, arrivalDate);
         this.country = country == null ? "" : country;
         this.customsCode = customsCode == null ? "" : customsCode;

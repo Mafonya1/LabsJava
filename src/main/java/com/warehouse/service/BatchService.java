@@ -20,7 +20,7 @@ public final class BatchService {
     private final CsvLoader loader = new CsvLoader();
     private final CsvSaver saver = new CsvSaver();
 
-    public static HashTable<Integer, Batch> getStorage() {
+    public HashTable<Integer, Batch> getStorage() {
         return store;
     }
 
