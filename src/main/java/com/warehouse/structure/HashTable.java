@@ -1,5 +1,8 @@
 package com.warehouse.structure;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class HashTable<K, V> {
 
     public enum SlotState { FREE, OCCUPIED, DELETED }
@@ -158,6 +161,18 @@ public class HashTable<K, V> {
             throw new IllegalArgumentException("Ключ не может быть null");
         }
     }
+
+    public List<V> values() {
+        List<V> result = new ArrayList<>(size);
+        for (int i = 0; i < values.length; i++) {
+            // Проверьте, как у вас называются массив ячеек, статус занятости и поле значения
+            if (values[i] != null && states[i] == SlotState.OCCUPIED) {
+                result.add((V) values[i]);
+            }
+        }
+        return result;
+    }
+
 
     public synchronized int size() { return size; }
     public synchronized int getCapacity() { return capacity; }

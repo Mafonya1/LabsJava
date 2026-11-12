@@ -9,6 +9,7 @@ import com.warehouse.model.Batch;
 import com.warehouse.model.Editable;
 import com.warehouse.model.ImportedBatch;
 import com.warehouse.service.BatchService;
+import com.warehouse.structure.HashTable;
 import com.warehouse.ui.task.ExportTask;
 import com.warehouse.ui.task.GenerateTask;
 import com.warehouse.ui.task.ImportTask;
@@ -68,6 +69,8 @@ public class MainController implements Initializable {
     // фоновые задачи
     private LoadTask loadTask;
     private GenerateTask generateTask;
+    private ExportTask exportTask;
+    private ImportTask importTask;
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -240,107 +243,52 @@ public class MainController implements Initializable {
 
     @FXML
     private void handleExport() {
-        FileChooser fc = serializationChooser("Экспорт данных");
-        File f = fc.showSaveDialog(window());
-        if (f == null) {
-            return;
-        }
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Экспорт данных склада");
+        chooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("JSON файлы (*.json)", "*.json"),
+                new FileChooser.ExtensionFilter("Бинарные файлы (*.bin)", "*.bin")
+        );
 
-        Path path = withExtension(f, fc);
-        Serializer serializer;
-        try {
-            serializer = Serializers.forFile(path);       // выбор формата по расширению
-        } catch (IllegalArgumentException e) {
-            error("Экспорт", e.getMessage());
-            return;
-        }
+        File selectedFile = chooser.showSaveDialog(window());
+        if (selectedFile == null) return;
 
-        Batch[] snapshot = service.findAll().toArray(new Batch[0]);
-        ExportTask task = new ExportTask(serializer, snapshot, path);
-        task.setOnSucceeded(e -> finishBackground(
-                "Экспортировано записей: " + snapshot.length + " → " + path.getFileName()));
-        task.setOnFailed(e -> failBackground("Ошибка экспорта", task));
-        startBackground(task, "Экспорт...");
+        Path path = selectedFile.toPath();
+        Serializer serializer = Serializers.forFile(path);
+
+        exportTask = new ExportTask(serializer, service.getTable(), path);
+        exportTask.setOnSucceeded(e -> exportFinished(path));
+        exportTask.setOnFailed(e -> taskFailed(exportTask));
+        exportTask.setOnCancelled(e -> taskCancelled());
+
+        startTask(exportTask, "Экспорт...");
     }
 
     @FXML
     private void handleImport() {
-        FileChooser fc = serializationChooser("Импорт данных");
-        File f = fc.showOpenDialog(window());
-        if (f == null) {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Импорт данных склада");
+        chooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Все поддерживаемые (*.json, *.bin)", "*.json", "*.bin"),
+                new FileChooser.ExtensionFilter("JSON файлы (*.json)", "*.json"),
+                new FileChooser.ExtensionFilter("Бинарные файлы (*.bin)", "*.bin")
+        );
+
+        File selectedFile = chooser.showOpenDialog(window());
+        if (selectedFile == null) {
             return;
         }
 
-        Path path = f.toPath();
-        Serializer serializer;
-        try {
-            serializer = Serializers.forFile(path);
-        } catch (IllegalArgumentException e) {
-            error("Импорт", e.getMessage());
-            return;
-        }
+        Path path = selectedFile.toPath();
+        Serializer serializer = Serializers.forFile(path);
 
-        ImportTask task = new ImportTask(serializer, path);
-        task.setOnSucceeded(e -> {                         // поток JavaFX
-            Batch[] loaded = task.getValue();
-            service.clear();                               // очищаем ТОЛЬКО после успешного чтения файла
-            service.addAll(Arrays.asList(loaded));
-            refresh("импорт " + path.getFileName());       // обновляются и таблица, и визуализация
-            finishBackground("Импортировано: " +  service.getTable().size() + " из " + loaded.length);
-        });
-        task.setOnFailed(e -> failBackground("Ошибка импорта (файл повреждён или неверный формат)", task));
-        startBackground(task, "Импорт...");
+        importTask = new ImportTask(serializer, path);
+        importTask.setOnSucceeded(e -> importFinished(path));
+        importTask.setOnFailed(e -> taskFailed(importTask));
+        importTask.setOnCancelled(e -> taskCancelled());
+
+        startTask(importTask, "Импорт...");
     }
-
-    private FileChooser serializationChooser(String title) {
-        FileChooser fc = new FileChooser();
-        fc.setTitle(title);
-        fc.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("JSON", "*.json"),
-                new FileChooser.ExtensionFilter("Бинарный (Serializable)", "*.bin"));
-        return fc;
-    }
-
-    /** Если пользователь не набрал расширение - берём его из выбранного фильтра. */
-    private Path withExtension(File file, FileChooser chooser) {
-        String name = file.getName().toLowerCase();
-        if (name.endsWith(".json") || name.endsWith(".bin")) {
-            return file.toPath();
-        }
-        FileChooser.ExtensionFilter filter = chooser.getSelectedExtensionFilter();
-        String extension = (filter != null && filter.getExtensions().contains("*.bin")) ? ".bin" : ".json";
-        return file.toPath().resolveSibling(file.getName() + extension);
-    }
-
-    private void startBackground(Task<?> task, String statusText) {
-        setBusy(true);
-        lblStatus.setText(statusText);
-        progressBar.progressProperty().bind(task.progressProperty());   // полоска следует за задачей
-        Thread thread = new Thread(task);
-        thread.setDaemon(true);                                         // не мешает закрытию программы
-        thread.start();
-    }
-
-    private void finishBackground(String statusText) {
-        progressBar.progressProperty().unbind();
-        progressBar.setProgress(0);
-        lblStatus.setText(statusText);
-        setBusy(false);
-    }
-
-    private void failBackground(String title, Task<?> task) {
-        finishBackground("Ошибка");
-        Throwable ex = task.getException();
-        error(title, ex == null ? "Неизвестная ошибка" : String.valueOf(ex.getMessage()));
-    }
-
-    private void setBusy(boolean busy) {
-        btnLoad.setDisable(busy);
-        btnGenerate.setDisable(busy);
-        btnImport.setDisable(busy);
-        btnExport.setDisable(busy);
-    }
-
     @FXML
     private void handleCancel() {
         if (loadTask != null) {
@@ -348,6 +296,12 @@ public class MainController implements Initializable {
         }
         if (generateTask != null) {
             generateTask.cancel();
+        }
+        if (exportTask != null) {
+            exportTask.cancel();
+        }
+        if (importTask != null) {
+            importTask.cancel();
         }
     }
 
@@ -368,6 +322,17 @@ public class MainController implements Initializable {
         endTask("Сгенерировано: " + generated.size() + ", в таблице: " + service.getTable().size());
     }
 
+    private void exportFinished(Path path) {
+        endTask("Экспортировано в " + path.getFileName());
+    }
+
+    private void importFinished(Path path) {
+        HashTable<Integer, Batch> loadedTable = importTask.getValue();
+        service.setStorage(loadedTable); // подменяем таблицу в сервисе
+        refresh("импорт " + path.getFileName());
+        endTask("Импортировано записей: " + loadedTable.size());
+    }
+
     private void taskFailed(Task<?> task) {
         endTask("Ошибка");
         error("Ошибка", task.getException().getMessage());
@@ -380,9 +345,11 @@ public class MainController implements Initializable {
     private void startTask(Task<?> task, String text) {
         btnLoad.setDisable(true);
         btnGenerate.setDisable(true);
+        btnExport.setDisable(true);
+        btnImport.setDisable(true);
         btnCancel.setDisable(false);
         lblStatus.setText(text);
-        progressBar.progressProperty().bind(task.progressProperty());   // полоска следует за задачей
+        progressBar.progressProperty().bind(task.progressProperty()); // полоска следует за задачей
 
         Thread thread = new Thread(task);
         thread.setDaemon(true);
@@ -395,9 +362,13 @@ public class MainController implements Initializable {
         lblStatus.setText(text);
         btnLoad.setDisable(false);
         btnGenerate.setDisable(false);
+        btnExport.setDisable(false);
+        btnImport.setDisable(false);
         btnCancel.setDisable(true);
         loadTask = null;
         generateTask = null;
+        exportTask = null;
+        importTask = null;
     }
 
     // ---------- вспомогательное ----------

@@ -1,9 +1,19 @@
 package com.warehouse.model;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
 import java.io.Serializable;
+
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
+@JsonSubTypes({
+        @JsonSubTypes.Type(value = ImportedBatch.class, name = "imported"),
+        @JsonSubTypes.Type(value = ArchivedBatch.class, name = "archived")
+})
 
 public abstract class Batch implements Serializable {
 
+    private static final long serialVersionUID = 1L;
     private final int article;
     private final String name;
     private final int quantity;

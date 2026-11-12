@@ -20,6 +20,15 @@ public final class BatchService {
     private final CsvLoader loader = new CsvLoader();
     private final CsvSaver saver = new CsvSaver();
 
+    public static HashTable<Integer, Batch> getStorage() {
+        return store;
+    }
+
+    // 2. Заменяет текущую таблицу на загруженную из файла
+    public void setStorage(HashTable<Integer, Batch> loadedStorage) {
+        this.store = (loadedStorage != null) ? loadedStorage : new HashTable<>();
+    }
+
     public LoadResult load(Path file) {
         LoadResult result = loader.load(file);
         addAll(result.loaded());
