@@ -38,11 +38,16 @@ public class LoadTask extends Task<LoadResult> {
                 return null;                 // Отмена
             }
             String line = lines.get(i);
-            if (!line.isBlank()) {
-                try {
+            try {
+                if (i == 0) {
+                    loader.checkHeader(line);            // первая строка - заголовок
+                } else if (!line.isBlank()) {
                     loaded.add(loader.parseLine(line));
-                } catch (CsvLoadException e) {
-                    errors.add(new LoadError(i + 1, line, e.getCode(), e.getMessage()));
+                }
+            } catch (CsvLoadException e) {
+                errors.add(new LoadError(i + 1, line, e.getCode(), e.getMessage()));
+                if (e.getCode() == LoadError.ErrorCode.BAD_HEADER) {
+                    break;                               // файл не в нашем формате
                 }
             }
             updateProgress(i + 1, lines.size());   // двигает полоску прогресса

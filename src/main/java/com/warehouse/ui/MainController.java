@@ -2,12 +2,16 @@ package com.warehouse.ui;
 
 import com.warehouse.io.LoadError;
 import com.warehouse.io.LoadResult;
+import com.warehouse.io.serialization.Serializer;
+import com.warehouse.io.serialization.Serializers;
 import com.warehouse.model.ArchivedBatch;
 import com.warehouse.model.Batch;
 import com.warehouse.model.Editable;
 import com.warehouse.model.ImportedBatch;
 import com.warehouse.service.BatchService;
+import com.warehouse.ui.task.ExportTask;
 import com.warehouse.ui.task.GenerateTask;
+import com.warehouse.ui.task.ImportTask;
 import com.warehouse.ui.task.LoadTask;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -26,6 +30,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import java.util.ResourceBundle;
 
@@ -47,6 +52,8 @@ public class MainController implements Initializable {
     @FXML private Button btnLoad;
     @FXML private Button btnGenerate;
     @FXML private Button btnCancel;
+    @FXML private Button btnImport;   // лаб. 3
+    @FXML private Button btnExport;
 
     @FXML private TextField tfSearch;
     @FXML private TextField tfCount;
@@ -228,6 +235,110 @@ public class MainController implements Initializable {
         generateTask.setOnFailed(e -> taskFailed(generateTask));
         generateTask.setOnCancelled(e -> taskCancelled());
         startTask(generateTask, "Генерация...");
+    }
+
+
+    @FXML
+    private void handleExport() {
+        FileChooser fc = serializationChooser("Экспорт данных");
+        File f = fc.showSaveDialog(window());
+        if (f == null) {
+            return;
+        }
+
+        Path path = withExtension(f, fc);
+        Serializer serializer;
+        try {
+            serializer = Serializers.forFile(path);       // выбор формата по расширению
+        } catch (IllegalArgumentException e) {
+            error("Экспорт", e.getMessage());
+            return;
+        }
+
+        Batch[] snapshot = service.findAll().toArray(new Batch[0]);
+        ExportTask task = new ExportTask(serializer, snapshot, path);
+        task.setOnSucceeded(e -> finishBackground(
+                "Экспортировано записей: " + snapshot.length + " → " + path.getFileName()));
+        task.setOnFailed(e -> failBackground("Ошибка экспорта", task));
+        startBackground(task, "Экспорт...");
+    }
+
+    @FXML
+    private void handleImport() {
+        FileChooser fc = serializationChooser("Импорт данных");
+        File f = fc.showOpenDialog(window());
+        if (f == null) {
+            return;
+        }
+
+        Path path = f.toPath();
+        Serializer serializer;
+        try {
+            serializer = Serializers.forFile(path);
+        } catch (IllegalArgumentException e) {
+            error("Импорт", e.getMessage());
+            return;
+        }
+
+        ImportTask task = new ImportTask(serializer, path);
+        task.setOnSucceeded(e -> {                         // поток JavaFX
+            Batch[] loaded = task.getValue();
+            service.clear();                               // очищаем ТОЛЬКО после успешного чтения файла
+            service.addAll(Arrays.asList(loaded));
+            refresh("импорт " + path.getFileName());       // обновляются и таблица, и визуализация
+            finishBackground("Импортировано: " +  service.getTable().size() + " из " + loaded.length);
+        });
+        task.setOnFailed(e -> failBackground("Ошибка импорта (файл повреждён или неверный формат)", task));
+        startBackground(task, "Импорт...");
+    }
+
+    private FileChooser serializationChooser(String title) {
+        FileChooser fc = new FileChooser();
+        fc.setTitle(title);
+        fc.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("JSON", "*.json"),
+                new FileChooser.ExtensionFilter("Бинарный (Serializable)", "*.bin"));
+        return fc;
+    }
+
+    /** Если пользователь не набрал расширение - берём его из выбранного фильтра. */
+    private Path withExtension(File file, FileChooser chooser) {
+        String name = file.getName().toLowerCase();
+        if (name.endsWith(".json") || name.endsWith(".bin")) {
+            return file.toPath();
+        }
+        FileChooser.ExtensionFilter filter = chooser.getSelectedExtensionFilter();
+        String extension = (filter != null && filter.getExtensions().contains("*.bin")) ? ".bin" : ".json";
+        return file.toPath().resolveSibling(file.getName() + extension);
+    }
+
+    private void startBackground(Task<?> task, String statusText) {
+        setBusy(true);
+        lblStatus.setText(statusText);
+        progressBar.progressProperty().bind(task.progressProperty());   // полоска следует за задачей
+        Thread thread = new Thread(task);
+        thread.setDaemon(true);                                         // не мешает закрытию программы
+        thread.start();
+    }
+
+    private void finishBackground(String statusText) {
+        progressBar.progressProperty().unbind();
+        progressBar.setProgress(0);
+        lblStatus.setText(statusText);
+        setBusy(false);
+    }
+
+    private void failBackground(String title, Task<?> task) {
+        finishBackground("Ошибка");
+        Throwable ex = task.getException();
+        error(title, ex == null ? "Неизвестная ошибка" : String.valueOf(ex.getMessage()));
+    }
+
+    private void setBusy(boolean busy) {
+        btnLoad.setDisable(busy);
+        btnGenerate.setDisable(busy);
+        btnImport.setDisable(busy);
+        btnExport.setDisable(busy);
     }
 
     @FXML
