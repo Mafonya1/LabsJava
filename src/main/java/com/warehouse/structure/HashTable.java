@@ -181,17 +181,14 @@ public class HashTable<K, V> implements Serializable {
         if (!(o instanceof HashTable<?, ?> other)) return false;
         if (this.size != other.size) return false;
 
-        for (int i = 0; i < capacity; i++) {
-            if (states[i] == SlotState.OCCUPIED) {
-                Object key = keys[i];
-                Object val = values[i];
-                Object otherVal = ((HashTable<Object, Object>) other).get(key);
-                if (!java.util.Objects.equals(val, otherVal)) {
-                    return false;
-                }
-            }
-        }
-        return true;
+        List<V> mine = values();
+        List<?> theirs = other.values();
+        return new java.util.HashSet<>(mine).equals(new java.util.HashSet<>(theirs));
+    }
+
+    @Override
+    public synchronized int hashCode() {
+        return new java.util.HashSet<>(values()).hashCode();
     }
 
     public synchronized int size() { return size; }

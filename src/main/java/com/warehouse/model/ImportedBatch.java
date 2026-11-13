@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 
 public class ImportedBatch extends Batch implements Editable, Serializable {
@@ -34,5 +35,19 @@ public class ImportedBatch extends Batch implements Editable, Serializable {
         if (country.isBlank()) errors.add("Страна обязательна");
         if (customsCode.isBlank()) errors.add("Таможенный код обязателен");
         return errors;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof ImportedBatch other)) return false;
+        if (!super.equals(o)) return false;
+        return Objects.equals(country, other.country)
+                && Objects.equals(customsCode, other.customsCode);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), country, customsCode);
     }
 }

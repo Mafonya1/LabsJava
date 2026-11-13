@@ -30,6 +30,15 @@ public final class CsvLoader {
             while ((line = reader.readLine()) != null) {
                 lineNo++;
                 if (line.isBlank()) continue;
+                if (lineNo == 1) {
+                    try {
+                        checkHeader(line);
+                        continue;
+                    } catch (CsvLoadException e) {
+                        errors.add(new LoadError(lineNo, line, e.getCode(), e.getMessage()));
+                        break;
+                    }
+                }
                 try {
                     loaded.add(parseLine(line));
                 } catch (CsvLoadException e) {

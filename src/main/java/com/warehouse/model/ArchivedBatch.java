@@ -11,4 +11,15 @@ public class ArchivedBatch extends Batch implements Serializable {
     public ArchivedBatch(@JsonProperty("article") int article, @JsonProperty("name") String name, @JsonProperty("quantity") int quantity, @JsonProperty("cell") int cell, @JsonProperty("arrivalDate") String arrivalDate) {
         super(article, name, quantity, cell, arrivalDate);
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof ArchivedBatch other)) return false;
+        return super.equals(other);
+    }
+    @Override
+    public int hashCode() {
+        return super.hashCode();
+    }
 }

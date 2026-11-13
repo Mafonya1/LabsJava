@@ -1,5 +1,6 @@
 package com.warehouse.io.serialization;
 
+import com.warehouse.io.serialization.envelopes.BinaryEnvelope;
 import com.warehouse.model.Batch;
 import com.warehouse.structure.HashTable;
 
@@ -17,7 +18,8 @@ public final class BinaryBatchSerializer implements Serializer {
     public void save(HashTable<Integer, Batch> table, Path file) throws IOException{
         try(ObjectOutputStream out = new ObjectOutputStream(
                 new BufferedOutputStream(Files.newOutputStream(file)))){
-            out.writeObject(table);
+            BinaryEnvelope envelope = new BinaryEnvelope(BinaryEnvelope.CURRENT_VERSION, table);
+            out.writeObject(envelope);
         }
     }
 
@@ -26,10 +28,23 @@ public final class BinaryBatchSerializer implements Serializer {
     public HashTable<Integer, Batch> load(Path file) throws IOException{
         try(ObjectInputStream in = new ObjectInputStream(
                 new BufferedInputStream(Files.newInputStream(file)))) {
-            return (HashTable<Integer, Batch>) in.readObject();
+            Object obj = in.readObject();
+            if (!(obj instanceof BinaryEnvelope envelope)) {
+                throw new IOException("Файл не является корректным BIN-файлом склада (ожидался BinaryEnvelope).");
+            }
+            if (envelope.getSchemaVersion() > BinaryEnvelope.CURRENT_VERSION) {
+                throw new IOException("Файл создан более новой версией (v" + envelope.getSchemaVersion()
+                        + "), приложение поддерживает до v" + BinaryEnvelope.CURRENT_VERSION);
+            }
+            return envelope.getTable();
         }
         catch (ClassNotFoundException e){
             throw new IOException("Не найден класс при демериализации", e);
+        } catch (InvalidClassException e) {
+            throw new IOException("Версия класса не совпадает (serialVersionUID). "
+                    + "Файл создан другой версией приложения.", e);
+        } catch (StreamCorruptedException e) {
+            throw new IOException("Файл повреждён или не является BIN-файлом.", e);
         }
     }
 
