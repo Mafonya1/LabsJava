@@ -2,12 +2,17 @@ package com.warehouse.ui;
 
 import com.warehouse.io.LoadError;
 import com.warehouse.io.LoadResult;
+import com.warehouse.io.serialization.Serializer;
+import com.warehouse.io.serialization.Serializers;
 import com.warehouse.model.ArchivedBatch;
 import com.warehouse.model.Batch;
 import com.warehouse.model.Editable;
 import com.warehouse.model.ImportedBatch;
 import com.warehouse.service.BatchService;
+import com.warehouse.structure.HashTable;
+import com.warehouse.ui.task.ExportTask;
 import com.warehouse.ui.task.GenerateTask;
+import com.warehouse.ui.task.ImportTask;
 import com.warehouse.ui.task.LoadTask;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -26,6 +31,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import java.util.ResourceBundle;
 
@@ -47,6 +53,8 @@ public class MainController implements Initializable {
     @FXML private Button btnLoad;
     @FXML private Button btnGenerate;
     @FXML private Button btnCancel;
+    @FXML private Button btnImport;   // лаб. 3
+    @FXML private Button btnExport;
 
     @FXML private TextField tfSearch;
     @FXML private TextField tfCount;
@@ -61,6 +69,9 @@ public class MainController implements Initializable {
     // фоновые задачи
     private LoadTask loadTask;
     private GenerateTask generateTask;
+    private ExportTask exportTask;
+    private ImportTask importTask;
+
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -230,6 +241,55 @@ public class MainController implements Initializable {
         startTask(generateTask, "Генерация...");
     }
 
+
+    @FXML
+    private void handleExport() {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Экспорт данных склада");
+        chooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("JSON файлы (*.json)", "*.json"),
+                new FileChooser.ExtensionFilter("Бинарные файлы (*.bin)", "*.bin")
+        );
+
+        File selectedFile = chooser.showSaveDialog(window());
+        if (selectedFile == null) return;
+
+        Path path = selectedFile.toPath();
+        Serializer serializer = Serializers.forFile(path);
+
+        exportTask = new ExportTask(serializer, service.getTable(), path);
+        exportTask.setOnSucceeded(e -> exportFinished(path));
+        exportTask.setOnFailed(e -> taskFailed(exportTask));
+        exportTask.setOnCancelled(e -> taskCancelled());
+
+        startTask(exportTask, "Экспорт...");
+    }
+
+    @FXML
+    private void handleImport() {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Импорт данных склада");
+        chooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Все поддерживаемые (*.json, *.bin)", "*.json", "*.bin"),
+                new FileChooser.ExtensionFilter("JSON файлы (*.json)", "*.json"),
+                new FileChooser.ExtensionFilter("Бинарные файлы (*.bin)", "*.bin")
+        );
+
+        File selectedFile = chooser.showOpenDialog(window());
+        if (selectedFile == null) {
+            return;
+        }
+
+        Path path = selectedFile.toPath();
+        Serializer serializer = Serializers.forFile(path);
+
+        importTask = new ImportTask(serializer, path);
+        importTask.setOnSucceeded(e -> importFinished(path));
+        importTask.setOnFailed(e -> taskFailed(importTask));
+        importTask.setOnCancelled(e -> taskCancelled());
+
+        startTask(importTask, "Импорт...");
+    }
     @FXML
     private void handleCancel() {
         if (loadTask != null) {
@@ -237,6 +297,12 @@ public class MainController implements Initializable {
         }
         if (generateTask != null) {
             generateTask.cancel();
+        }
+        if (exportTask != null) {
+            exportTask.cancel();
+        }
+        if (importTask != null) {
+            importTask.cancel();
         }
     }
 
@@ -257,6 +323,17 @@ public class MainController implements Initializable {
         endTask("Сгенерировано: " + generated.size() + ", в таблице: " + service.getTable().size());
     }
 
+    private void exportFinished(Path path) {
+        endTask("Экспортировано в " + path.getFileName());
+    }
+
+    private void importFinished(Path path) {
+        HashTable<Integer, Batch> loadedTable = importTask.getValue();
+        service.setStorage(loadedTable); // подменяем таблицу в сервисе
+        refresh("импорт " + path.getFileName());
+        endTask("Импортировано записей: " + loadedTable.size());
+    }
+
     private void taskFailed(Task<?> task) {
         endTask("Ошибка");
         error("Ошибка", task.getException().getMessage());
@@ -269,9 +346,11 @@ public class MainController implements Initializable {
     private void startTask(Task<?> task, String text) {
         btnLoad.setDisable(true);
         btnGenerate.setDisable(true);
+        btnExport.setDisable(true);
+        btnImport.setDisable(true);
         btnCancel.setDisable(false);
         lblStatus.setText(text);
-        progressBar.progressProperty().bind(task.progressProperty());   // полоска следует за задачей
+        progressBar.progressProperty().bind(task.progressProperty()); // полоска следует за задачей
 
         Thread thread = new Thread(task);
         thread.setDaemon(true);
@@ -284,9 +363,13 @@ public class MainController implements Initializable {
         lblStatus.setText(text);
         btnLoad.setDisable(false);
         btnGenerate.setDisable(false);
+        btnExport.setDisable(false);
+        btnImport.setDisable(false);
         btnCancel.setDisable(true);
         loadTask = null;
         generateTask = null;
+        exportTask = null;
+        importTask = null;
     }
 
     // ---------- вспомогательное ----------

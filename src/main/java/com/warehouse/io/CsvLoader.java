@@ -30,6 +30,15 @@ public final class CsvLoader {
             while ((line = reader.readLine()) != null) {
                 lineNo++;
                 if (line.isBlank()) continue;
+                if (lineNo == 1) {
+                    try {
+                        checkHeader(line);
+                        continue;
+                    } catch (CsvLoadException e) {
+                        errors.add(new LoadError(lineNo, line, e.getCode(), e.getMessage()));
+                        break;
+                    }
+                }
                 try {
                     loaded.add(parseLine(line));
                 } catch (CsvLoadException e) {
@@ -43,39 +52,39 @@ public final class CsvLoader {
         return new LoadResult(loaded, errors);
     }
 
+    public void checkHeader(String line) {
+        String text = line.replace("\uFEFF", "").trim();
+        if (!CsvFormat.HEADER.equals(text)) {
+            throw new CsvLoadException(LoadError.ErrorCode.BAD_HEADER,
+                    "Ожидался заголовок: " + CsvFormat.HEADER);
+        }
+    }
+
+    /**
+     * Разбирает одну строку с данными в партию.
+     */
     public Batch parseLine(String line) {
-        String[] p = line.split(";", -1);
-        if (p.length == 0) {
-            throw new CsvLoadException(LoadError.ErrorCode.EMPTY_LINE, "Пустая строка");
-        }
-
-        String first = p[0].trim();
-
-        if ("Archive".equalsIgnoreCase(first)) {
-            if (p.length != 6) {
-                throw new CsvLoadException(LoadError.ErrorCode.WRONG_FIELD_COUNT,
-                        "Archive: нужно 6 полей, есть " + p.length);
-            }
-            int article = parseInt(p[1], "Archive.article");
-            String name = p[2].trim();
-            int qty   = parseInt(p[3], "Archive.quantity");
-            int cell  = parseInt(p[4], "Archive.cell");
-            String date = p[5].trim();
-            return new ArchivedBatch(article, name, qty, cell, date);
-        }
-
-        if (p.length != 7) {
+        String[] p = CsvFormat.split(line);
+        if (p.length != CsvFormat.COLUMNS) {
             throw new CsvLoadException(LoadError.ErrorCode.WRONG_FIELD_COUNT,
-                    "Imported: нужно 7 полей, есть " + p.length);
+                    "Нужно " + CsvFormat.COLUMNS + " полей, есть " + p.length);
         }
-        int article = parseInt(first, "Imported.article");
-        String name = p[1].trim();
-        int qty     = parseInt(p[2], "Imported.quantity");
-        int cell    = parseInt(p[3], "Imported.cell");
-        String date = p[4].trim();
-        String country = p[5].trim();
-        String code    = p[6].trim();
-        return new ImportedBatch(article, name, qty, cell, date, country, code);
+
+        String type = p[0].trim();
+        int article = parseInt(p[1], "article");
+        String name = p[2].trim();
+        int quantity = parseInt(p[3], "quantity");
+        int cell = parseInt(p[4], "cell");
+        String date = p[5].trim();
+
+        if (CsvFormat.TYPE_ARCHIVED.equalsIgnoreCase(type)) {
+            return new ArchivedBatch(article, name, quantity, cell, date);
+        }
+        if (CsvFormat.TYPE_IMPORTED.equalsIgnoreCase(type)) {
+            return new ImportedBatch(article, name, quantity, cell, date, p[6].trim(), p[7].trim());
+        }
+        throw new CsvLoadException(LoadError.ErrorCode.UNKNOWN_TYPE,
+                "Неизвестный тип: '" + type + "' (нужно imported или archived)");
     }
 
     private int parseInt(String raw, String fieldName) {

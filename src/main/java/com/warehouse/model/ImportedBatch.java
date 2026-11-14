@@ -1,16 +1,21 @@
 package com.warehouse.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 
 public class ImportedBatch extends Batch implements Editable, Serializable {
     private final String country;
     private final String customsCode;
 
-    public ImportedBatch(int article, String name, int quantity, int cell,
-                         String arrivalDate, String country, String customsCode) {
+    @JsonCreator
+    public ImportedBatch(@JsonProperty("article") int article, @JsonProperty("name") String name, @JsonProperty("quantity") int quantity, @JsonProperty("cell") int cell,
+                         @JsonProperty("arrivalDate") String arrivalDate, @JsonProperty("country") String country, @JsonProperty("customsCode") String customsCode) {
         super(article, name, quantity, cell, arrivalDate);
         this.country = country == null ? "" : country;
         this.customsCode = customsCode == null ? "" : customsCode;
@@ -30,5 +35,19 @@ public class ImportedBatch extends Batch implements Editable, Serializable {
         if (country.isBlank()) errors.add("Страна обязательна");
         if (customsCode.isBlank()) errors.add("Таможенный код обязателен");
         return errors;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof ImportedBatch other)) return false;
+        if (!super.equals(o)) return false;
+        return Objects.equals(country, other.country)
+                && Objects.equals(customsCode, other.customsCode);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), country, customsCode);
     }
 }

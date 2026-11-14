@@ -1,45 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
+
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="com.warehouse.ui.MainController"
-            prefWidth="1200" prefHeight="620">
+<BorderPane prefHeight="620" prefWidth="1200" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.warehouse.ui.MainController">
     <top>
         <VBox spacing="6" style="-fx-padding: 10;">
             <HBox spacing="8">
-                <Button fx:id="btnAdd" text="Добавить" onAction="#handleAdd"/>
-                <Button fx:id="btnEdit" text="Изменить" onAction="#handleEdit"/>
-                <Button fx:id="btnDelete" text="Удалить" onAction="#handleDelete"/>
-                <Button fx:id="btnLoad" text="Загрузить из CSV" onAction="#handleLoad"/>
-                <Button fx:id="btnSave" text="Сохранить в CSV" onAction="#handleSave"/>
+                <Button fx:id="btnAdd" onAction="#handleAdd" text="Добавить" />
+                <Button fx:id="btnEdit" onAction="#handleEdit" text="Изменить" />
+                <Button fx:id="btnDelete" onAction="#handleDelete" text="Удалить" />
+                <Button fx:id="btnLoad" onAction="#handleLoad" text="Загрузить из CSV" />
+                <Button fx:id="btnSave" onAction="#handleSave" text="Сохранить в CSV" />
+                <Button fx:id="btnExport" onAction="#handleExport" text="Экспорт" />
+                <Button fx:id="btnImport" onAction="#handleImport" text="Импорт" />
             </HBox>
-            <HBox spacing="8" alignment="CENTER_LEFT">
-                <Label text="Поиск по артикулу:"/>
-                <TextField fx:id="tfSearch" prefWidth="100"/>
-                <Button text="Найти" onAction="#handleFind"/>
-                <Label text="Сгенерировать записей:"/>
-                <TextField fx:id="tfCount" text="1000" prefWidth="80"/>
-                <Button fx:id="btnGenerate" text="Сгенерировать" onAction="#handleGenerate"/>
-                <Button fx:id="btnCancel" text="Отмена" onAction="#handleCancel"/>
-                <ProgressBar fx:id="progressBar" prefWidth="140" progress="0.0"/>
-                <Label fx:id="lblStatus" text=""/>
+            <HBox alignment="CENTER_LEFT" spacing="8">
+                <Label text="Поиск по артикулу:" />
+                <TextField fx:id="tfSearch" prefWidth="100" />
+                <Button onAction="#handleFind" text="Найти" />
+                <Label text="Сгенерировать записей:" />
+                <TextField fx:id="tfCount" prefWidth="80" text="1000" />
+                <Button fx:id="btnGenerate" onAction="#handleGenerate" text="Сгенерировать" />
+                <Button fx:id="btnCancel" onAction="#handleCancel" text="Отмена" />
+                <ProgressBar fx:id="progressBar" prefWidth="140" progress="0.0" />
+                <Label fx:id="lblStatus" text="" />
             </HBox>
         </VBox>
     </top>
     <center>
         <TableView fx:id="tableView">
             <columns>
-                <TableColumn fx:id="colArticle" text="Артикул" prefWidth="80"/>
-                <TableColumn fx:id="colName" text="Название" prefWidth="180"/>
-                <TableColumn fx:id="colQuantity" text="Количество" prefWidth="100"/>
-                <TableColumn fx:id="colCell" text="Ячейка" prefWidth="80"/>
-                <TableColumn fx:id="colDate" text="Дата завоза" prefWidth="110"/>
-                <TableColumn fx:id="colType" text="Тип" prefWidth="100"/>
+                <TableColumn fx:id="colArticle" prefWidth="80" text="Артикул" />
+                <TableColumn fx:id="colName" prefWidth="180" text="Название" />
+                <TableColumn fx:id="colQuantity" prefWidth="100" text="Количество" />
+                <TableColumn fx:id="colCell" prefWidth="80" text="Ячейка" />
+                <TableColumn fx:id="colDate" prefWidth="110" text="Дата завоза" />
+                <TableColumn fx:id="colType" prefWidth="100" text="Тип" />
             </columns>
         </TableView>
     </center>
     <right>
-        <ScrollPane fx:id="visualPane" prefWidth="560"/>
+        <ScrollPane fx:id="visualPane" prefWidth="560" />
     </right>
 </BorderPane>

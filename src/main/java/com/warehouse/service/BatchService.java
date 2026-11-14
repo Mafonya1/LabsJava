@@ -16,9 +16,18 @@ import java.util.List;
 public final class BatchService {
 
     // Хранилище - наша хеш-таблица Ключ - артикул.
-    private final HashTable<Integer, Batch> store = new HashTable<>();
+    private HashTable<Integer, Batch> store = new HashTable<>();
     private final CsvLoader loader = new CsvLoader();
     private final CsvSaver saver = new CsvSaver();
+
+    public HashTable<Integer, Batch> getStorage() {
+        return store;
+    }
+
+    //Заменяет текущую таблицу на загруженную из файла
+    public void setStorage(HashTable<Integer, Batch> loadedStorage) {
+        this.store = (loadedStorage != null) ? loadedStorage : new HashTable<>();
+    }
 
     public LoadResult load(Path file) {
         LoadResult result = loader.load(file);

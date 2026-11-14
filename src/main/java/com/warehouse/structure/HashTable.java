@@ -1,6 +1,11 @@
 package com.warehouse.structure;
 
-public class HashTable<K, V> {
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+
+public class HashTable<K, V> implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     public enum SlotState { FREE, OCCUPIED, DELETED }
 
@@ -157,6 +162,33 @@ public class HashTable<K, V> {
         if (key == null) {
             throw new IllegalArgumentException("Ключ не может быть null");
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    public synchronized List<V> values() {
+        List<V> result = new ArrayList<>(size);
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] != null && states[i] == SlotState.OCCUPIED) {
+                result.add((V) values[i]);
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public synchronized boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof HashTable<?, ?> other)) return false;
+        if (this.size != other.size) return false;
+
+        List<V> mine = values();
+        List<?> theirs = other.values();
+        return new java.util.HashSet<>(mine).equals(new java.util.HashSet<>(theirs));
+    }
+
+    @Override
+    public synchronized int hashCode() {
+        return new java.util.HashSet<>(values()).hashCode();
     }
 
     public synchronized int size() { return size; }

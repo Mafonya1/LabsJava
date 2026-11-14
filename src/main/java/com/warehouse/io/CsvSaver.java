@@ -15,6 +15,8 @@ public final class CsvSaver {
 
     public void save(List<Batch> batches, Path file) throws IOException {
         try (BufferedWriter w = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
+            w.write(CsvFormat.HEADER);                 // первая строка - заголовок
+            w.newLine();
             for (Batch b : batches) {
                 w.write(toLine(b));
                 w.newLine();
@@ -23,15 +25,28 @@ public final class CsvSaver {
     }
 
     private String toLine(Batch b) {
-        if (b instanceof ArchivedBatch) {
-            return "Archive;%d;%s;%d;%d;%s".formatted(
-                    b.getArticle(), b.getName(), b.getQuantity(), b.getCell(), b.getArrivalDate());
-        }
+        String type;
+        String country = "";
+        String customsCode = "";
+
         if (b instanceof ImportedBatch ib) {
-            return "%d;%s;%d;%d;%s;%s;%s".formatted(
-                    b.getArticle(), b.getName(), b.getQuantity(), b.getCell(),
-                    b.getArrivalDate(), ib.getCountry(), ib.getCustomsCode());
+            type = CsvFormat.TYPE_IMPORTED;
+            country = ib.getCountry();
+            customsCode = ib.getCustomsCode();
+        } else if (b instanceof ArchivedBatch) {
+            type = CsvFormat.TYPE_ARCHIVED;
+        } else {
+            throw new IllegalArgumentException("Неизвестный тип: " + b.getClass());
         }
-        throw new IllegalArgumentException("Неизвестный тип: " + b.getClass());
+
+        return String.join(String.valueOf(CsvFormat.DELIMITER),
+                type,
+                String.valueOf(b.getArticle()),
+                CsvFormat.escape(b.getName()),
+                String.valueOf(b.getQuantity()),
+                String.valueOf(b.getCell()),
+                CsvFormat.escape(b.getArrivalDate()),
+                CsvFormat.escape(country),
+                CsvFormat.escape(customsCode));
     }
 }
