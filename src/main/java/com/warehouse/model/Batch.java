@@ -3,7 +3,7 @@ package com.warehouse.model;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
-import java.io.Serializable;
+import java.io.*;
 import java.util.Objects;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
@@ -14,31 +14,60 @@ import java.util.Objects;
 
 public abstract class Batch implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
+    public static final int CURRENT_VERSION = 2;
+
     private final int article;
     private final String name;
     private final int quantity;
     private final int cell;
     private final String arrivalDate;
+    private final String changeDate;
 
-    protected Batch(int article, String name, int quantity, int cell, String arrivalDate) {
+    // Основной конструктор (v2)
+    protected Batch(int article, String name, int quantity, int cell, String arrivalDate, String changeDate) {
         this.article = article;
         this.name = name == null ? "" : name;
         this.quantity = quantity;
         this.cell = cell;
         this.arrivalDate = arrivalDate == null ? "" : arrivalDate;
+        this.changeDate = (changeDate == null || changeDate.isBlank()) ? arrivalDate : changeDate;
     }
 
-    public int getArticle() { return article; }
-    public String getName() { return name; }
-    public int getQuantity() { return quantity; }
-    public int getCell() { return cell; }
-    public String getArrivalDate() { return arrivalDate; }
+    // Конструктор для миграции со старой версии (v1 -> v2)
+    protected Batch(int article, String name, int quantity, int cell, String arrivalDate) {
+        this(article, name, quantity, cell, arrivalDate, arrivalDate);
+    }
+
+    public int getArticle() {
+        return article;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+
+    public int getCell() {
+        return cell;
+    }
+
+    public String getArrivalDate() {
+        return arrivalDate;
+    }
+
+    public String getChangeDate() {
+        return changeDate;
+    }
 
     @Override
     public String toString() {
-        return "Партия{артикул=%d, название='%s', количество=%d, ячейка=%d, дата='%s'}"
-                .formatted(article, name, quantity, cell, arrivalDate);
+        return "Партия{артикул=%d, название='%s', количество=%d, ячейка=%d, дата='%s', изменено='%s'}"
+                .formatted(article, name, quantity, cell, arrivalDate, changeDate);
     }
 
     @Override
@@ -49,11 +78,12 @@ public abstract class Batch implements Serializable {
                 && quantity == other.quantity
                 && cell == other.cell
                 && Objects.equals(name, other.name)
-                && Objects.equals(arrivalDate, other.arrivalDate);
+                && Objects.equals(arrivalDate, other.arrivalDate)
+                && Objects.equals(changeDate, other.changeDate);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(article, name, quantity, cell, arrivalDate);
+        return Objects.hash(article, name, quantity, cell, arrivalDate, changeDate);
     }
 }
