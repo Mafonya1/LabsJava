@@ -3,15 +3,6 @@ package com.warehouse.io;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Описание формата CSV в одном месте. Им пользуются и CsvLoader, и CsvSaver,
- * поэтому формат нельзя "разъехаться".
- *
- * Формат: первая строка - заголовок, дальше по строке на партию, у ВСЕХ строк одинаковые 8 колонок:
- *   type;article;name;quantity;cell;arrivalDate;country;customsCode
- * type - imported или archived. У архивной партии country и customsCode пустые.
- * Если в поле есть ; или кавычка, поле берётся в кавычки, а кавычка внутри удваивается ("").
- */
 public final class CsvFormat {
 
     public static final char DELIMITER = ';';
@@ -25,14 +16,14 @@ public final class CsvFormat {
 
     /** Готовит значение для записи: при необходимости берёт в кавычки. */
     public static String escape(String value) {
-        String text = value.replace('\r', ' ').replace('\n', ' ');   // многострочные поля не поддерживаем
+        String text = value.replace('\r', ' ').replace('\n', ' ');
         if (text.indexOf(DELIMITER) >= 0 || text.indexOf('"') >= 0) {
             return "\"" + text.replace("\"", "\"\"") + "\"";
         }
         return text;
     }
 
-    /** Режет строку на поля с учётом кавычек. Обычный split тут не годится: ; внутри кавычек - не разделитель. */
+    /** Режет строку на поля с учётом кавычек. **/
     public static String[] split(String line) {
         List<String> fields = new ArrayList<>();
         StringBuilder current = new StringBuilder();
@@ -44,7 +35,7 @@ public final class CsvFormat {
                 if (c == '"') {
                     boolean doubled = i + 1 < line.length() && line.charAt(i + 1) == '"';
                     if (doubled) {
-                        current.append('"');         // "" внутри кавычек - это одна кавычка
+                        current.append('"');
                         i++;
                     } else {
                         inQuotes = false;            // закрывающая кавычка

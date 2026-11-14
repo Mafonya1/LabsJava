@@ -72,6 +72,7 @@ public class MainController implements Initializable {
     private ExportTask exportTask;
     private ImportTask importTask;
 
+
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         colArticle.setCellValueFactory(cd -> new javafx.beans.property.SimpleIntegerProperty(cd.getValue().getArticle()).asObject());

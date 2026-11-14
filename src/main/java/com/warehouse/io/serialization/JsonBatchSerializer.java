@@ -2,7 +2,6 @@ package com.warehouse.io.serialization;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.warehouse.io.serialization.envelopes.JsonEnvelope;
 import com.warehouse.model.Batch;
 import com.warehouse.structure.HashTable;
@@ -17,7 +16,6 @@ public final class JsonBatchSerializer implements Serializer{
 
     public JsonBatchSerializer() {
         this.mapper = new ObjectMapper();
-        this.mapper.registerModule(new JavaTimeModule());
         this.mapper.enable(SerializationFeature.INDENT_OUTPUT);
     }
 
@@ -33,6 +31,7 @@ public final class JsonBatchSerializer implements Serializer{
         mapper.writerFor(JsonEnvelope.class)
                 .writeValue(file.toFile(), envelope);
     }
+
 
     @Override
     public HashTable<Integer, Batch> load(Path file) throws IOException {

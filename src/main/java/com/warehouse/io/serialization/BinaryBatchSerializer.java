@@ -19,7 +19,7 @@ public final class BinaryBatchSerializer implements Serializer {
         try(ObjectOutputStream out = new ObjectOutputStream(
                 new BufferedOutputStream(Files.newOutputStream(file)))){
             BinaryEnvelope envelope = new BinaryEnvelope(BinaryEnvelope.CURRENT_VERSION, table);
-            out.writeObject(envelope);
+            synchronized (table){ out.writeObject(envelope); }
         }
     }
 

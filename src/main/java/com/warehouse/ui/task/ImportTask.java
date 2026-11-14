@@ -20,6 +20,9 @@ public class ImportTask extends Task<HashTable<Integer, Batch>> {
 
     @Override
     protected HashTable<Integer, Batch> call() throws Exception {
+        if (isCancelled()) {
+            return null;                 // пользователь нажал "Отмена"
+        }
         return serializer.load(file);
     }
 }

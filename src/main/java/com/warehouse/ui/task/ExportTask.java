@@ -20,6 +20,9 @@ public class ExportTask extends Task<Void>{
 
     @Override
     protected Void call() throws Exception {
+        if (isCancelled()) {
+            return null;                 // пользователь нажал "Отмена"
+        }
         serializer.save(snapshot, file);
         return null;
     }

@@ -53,7 +53,7 @@ public final class CsvLoader {
     }
 
     public void checkHeader(String line) {
-        String text = line.replace("\uFEFF", "").trim();    // Excel может добавить в начало невидимый символ BOM
+        String text = line.replace("\uFEFF", "").trim();
         if (!CsvFormat.HEADER.equals(text)) {
             throw new CsvLoadException(LoadError.ErrorCode.BAD_HEADER,
                     "Ожидался заголовок: " + CsvFormat.HEADER);

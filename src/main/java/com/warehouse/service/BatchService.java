@@ -24,7 +24,7 @@ public final class BatchService {
         return store;
     }
 
-    // 2. Заменяет текущую таблицу на загруженную из файла
+    //Заменяет текущую таблицу на загруженную из файла
     public void setStorage(HashTable<Integer, Batch> loadedStorage) {
         this.store = (loadedStorage != null) ? loadedStorage : new HashTable<>();
     }
@@ -83,7 +83,6 @@ public final class BatchService {
         }
         return result;
     }
-    public void clear() { store = new HashTable<>(); }
 
     public HashTable<Integer, Batch> getTable() { return store; }
 }
